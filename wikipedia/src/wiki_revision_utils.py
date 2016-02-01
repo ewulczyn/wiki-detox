@@ -93,7 +93,6 @@ def get_blocked_users_talk_page_comment_meta_data(d_blocked_users, max_comments,
     t2 = time.time()
     print((t2-t1))
     print('Rate:', float(d_blocked_users.shape[0]) / ((t2-t1)/60.0), 'rpm')
-    
     d_meta.drop_duplicates(subset='rev_id', inplace = True)
     d_meta.index = d_meta['rev_id']
     return d_meta
