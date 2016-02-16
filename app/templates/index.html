@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <title>Online Discussion Modeling</title>
+    <link href="http://getbootstrap.com/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+
+  <body>
+
+  <!-- Header-->
+  <div class="container-fluid">
+    <div class="jumbotron">
+      <h1>Online Discussion Modeling</h1>
+      <h6>A collection of machine learning classifiers for evaluating online discussion comments</h3>
+      </div>
+  </div>
+  <!-- Model Description-->
+  <div class="container-fluid">
+    <h3>Insult Model</h3>
+    <p> This model was trained on data from the "Detecting Insults in Social Commentary" Kaggle Challenge and gives the probability that the comment contains an insult.</p>
+    </br>
+  </div>
+  <!-- Scoring Interface-->
+  <div class="container-fluid">
+  <div class="row">
+    <div class="col-xs-6 col-sm-6 col-md-6 col-lg-6">
+      <form action="" method="POST" role="form">
+        <div class="form-group">
+          <label for="insult-text-input">Discussion Comment</label>
+          <textarea class="form-control" id="insult-text-input" placeholder="Comment Text"></textarea>
+        </div>
+        <div id='insult-text-score'>
+          <p>Insult Probability:</p>
+        </div>
+        <button type="button" class="btn btn-primary" id="insult-text-submit">Score</button>
+      </form>
+    </div>
+    <div class="col-xs-6 col-sm-6 col-md-6 col-lg-6">
+      <form action="" method="POST" role="form">
+        <div class="form-group">
+          <label for="insult-id-input">Wikipedia Revision ID</label>
+          <input type='text' class="form-control" id="insult-id-input" placeholder="Revision ID">
+        </div>
+        </br>
+        <div id='insult-id-score'>
+          <p>Insult Probability:</p>
+        </div>
+        <button type="button" class="btn btn-primary" id="insult-id-submit">Score</button>
+      </form>
+    </div>
+  </div>
+
+  </body>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script> 
+  <script src="http://getbootstrap.com/dist/js/bootstrap.min.js"></script> 
+  <script src="./static/js/score.js"></script> 
+</html>
+
+

@@ -176,16 +176,22 @@ def get_raw_diffs_concurrent(d, n_threads = 5):
     return d
 
 
+
+def clean_raw_diff(diff):
+    diff = get_content_added(diff)
+    diff = remove_talk_page_link(diff)
+    diff = remove_signature(diff)
+    diff = remove_date(diff)
+    diff = strip_mw(diff)
+    diff = strip_html(diff)
+    return diff
+
+
 def clean_raw_diffs(d):
     """
     Takes a dataframe with raw diffs and cleans them up. Empty revisions are deleted
     """
-    d['diff'] = d['raw_diff'].apply(get_content_added)
-    d['diff'] = d['diff'].apply(remove_talk_page_link)
-    d['diff'] = d['diff'].apply(remove_signature)
-    d['diff'] = d['diff'].apply(remove_date)
-    d['diff'] = d['diff'].apply(strip_mw)
-    d['diff'] = d['diff'].apply(strip_html)
+    d['diff'] = d['raw_diff'].apply(clean_raw_diff)
     return d[d['diff'] != '']
 
 
