@@ -70,4 +70,4 @@ if __name__ == "__main__":
     if args.local:
         app.run(port=5002)
     else:
-        app.run(host='0.0.0.0')
+        app.run(host='0.0.0.0', port=8000)
