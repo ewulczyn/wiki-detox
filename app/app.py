@@ -14,6 +14,10 @@ app.debug = True
 def main():
     return render_template('index.html')
 
+@app.route('/wiki-talk')
+def main():
+    return render_template('index.html')
+
 
 @app.route('/api')
 def get_insult_scores():
