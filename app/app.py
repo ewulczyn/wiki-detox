@@ -15,7 +15,7 @@ def main():
     return render_template('index.html')
 
 @app.route('/wiki-talk')
-def main():
+def main2():
     return render_template('index.html')
 
 
