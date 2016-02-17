@@ -14,7 +14,7 @@ app.debug = True
 def main():
     return render_template('index.html')
 
-@app.route('/wiki-talk')
+@app.route('/wiki-talk/')
 def main2():
     return render_template('index.html')
 
@@ -65,7 +65,7 @@ parser.add_argument(
     help='run on local host '
 )
 
-args = parser.parse_args()
+args, unknown = parser.parse_known_args()
 model_paths = json.load(open(args.model_paths))
 models = {k : joblib.load(v) for k,v in model_paths.items()}
 
