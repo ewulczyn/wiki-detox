@@ -1,4 +1,4 @@
-from db_utils import query_analytics_store
+from db_utils import query_analytics_store,query_stat_ssh
 import pandas as pd
 import datetime
 
@@ -112,7 +112,7 @@ def get_talk_page_comment_meta_data(n, min_date, namespace):
         enwiki.page p 
     WHERE
         r.rev_page = p.page_id
-        AND rev_timestamp > %(min_date)d
+        AND rev_timestamp > '%(min_date)d'
         AND page_namespace = %(namespace)d
     LIMIT %(num_comments)d
     """
@@ -123,6 +123,7 @@ def get_talk_page_comment_meta_data(n, min_date, namespace):
         'namespace': namespace,
     }
 
-    d = query_analytics_store(query % params , {})
+    #d = query_analytics_store(query % params , {})
+    d = query_stat_ssh(query % params, 'query.tsv')
     d.index = d['rev_id']
     return d
