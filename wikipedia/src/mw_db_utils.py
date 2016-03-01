@@ -1,15 +1,7 @@
-from db_utils import query_analytics_store
-import requests
-from bs4 import BeautifulSoup
-from pprint import pprint
-import mwparserfromhell
-import re
-import sys
-import concurrent
-import itertools
+from db_utils import query_analytics_store,query_stat_ssh
 import pandas as pd
-import time
 import datetime
+
 
 
 def get_blocked_users(keywords):
@@ -120,7 +112,7 @@ def get_talk_page_comment_meta_data(n, min_date, namespace):
         enwiki.page p 
     WHERE
         r.rev_page = p.page_id
-        AND rev_timestamp > %(min_date)d
+        AND rev_timestamp > '%(min_date)d'
         AND page_namespace = %(namespace)d
     LIMIT %(num_comments)d
     """
@@ -131,102 +123,7 @@ def get_talk_page_comment_meta_data(n, min_date, namespace):
         'namespace': namespace,
     }
 
-    d = query_analytics_store(query % params , {})
+    #d = query_analytics_store(query % params , {})
+    d = query_stat_ssh(query % params, 'query.tsv')
     d.index = d['rev_id']
     return d
-
-
-def get_raw_diffs_concurrent(d, n_threads = 5):
-    """
-    Given a Dataframe of revision meta-data, adds
-    a columns with the raw diffs via concurrent 
-    API calls
-    """
-
-    def get_diff(x):
-        i, row = x
-        rev_id = row['rev_id'] 
-        page_id = row['page_id'] 
-        url = 'https://en.wikipedia.org/w/api.php?action=query&prop=revisions&revids=%d&rvdiffto=prev&format=json'
-        url = url % rev_id
-        r = requests.get(url)
-        try:
-            diff = r.json()['query']['pages'][str(page_id)]['revisions'][0]['diff']['*']
-        except:
-            diff = 'ERROR'
-            print(sys.exc_info()[0])
-            
-        return (row['rev_id'], diff )  
-
-    t1 = time.time()
-    with concurrent.futures.ThreadPoolExecutor(n_threads) as executor:
-        results = executor.map(get_diff, d.iterrows())
-        index = []
-        diffs = []
-        for rev_id, diff in results:
-            index.append(rev_id)
-            diffs.append(diff)
-        diff_series = pd.Series(diffs, index = index)
-    t2 = time.time()
-
-    d['raw_diff'] = diff_series
-    d['diff'] = diff_series
-
-    print('Rate:', float(d.shape[0]) / ((t2-t1)/60.0), 'rpm')
-    return d
-
-
-def clean_raw_diffs(d):
-    """
-    Takes a dataframe with raw diffs and cleans them up. Empty revisions are deleted
-    """
-    d['diff'] = d['raw_diff'].apply(get_content_added)
-    d['diff'] = d['diff'].apply(remove_talk_page_link)
-    d['diff'] = d['diff'].apply(remove_signature)
-    d['diff'] = d['diff'].apply(remove_date)
-    d['diff'] = d['diff'].apply(strip_mw)
-    d['diff'] = d['diff'].apply(strip_html)
-    return d[d['diff'] != '']
-
-
-# Diff Parsing and Cleaning Functions
-def get_content_added(diff):
-    soup = BeautifulSoup(diff, 'html.parser')
-    cols = soup.find_all('td', attrs={'class':'diff-addedline'})
-    cols = [e.text.strip().strip(':') for e in cols]
-    cols = [e for e in cols if e]
-    comment =  ' '.join(cols)
-    return comment
-
-def strip_html(comment):
-    return BeautifulSoup(comment, 'html.parser').get_text()
-
-def strip_mw(comment):
-    return mwparserfromhell.parse(comment).strip_code()
-
-def remove_signature(comment):
-    return re.sub('\[\[User.*?\]\]', '', comment)
-
-def remove_talk_page_link(comment):
-    return re.sub('\(\[\[User.*?\]\]\)', '', comment)
-
-
-months = ['January',
-          'February',
-          'March',
-          'April',
-          'June',
-          'July',
-          'August',
-          'September',
-          'October',
-          'November',
-          'December',
-        ]
-
-
-month_or = '|'.join(months)
-date_p = re.compile('\d\d:\d\d, \d?\d (%s) \d\d\d\d \(UTC\)' % month_or)
-    
-def remove_date(comment):
-    return re.sub(date_p , '', comment )

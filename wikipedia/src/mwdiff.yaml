@@ -1,0 +1,10 @@
+diff_engine: segment_matcher
+
+tokenizers:
+  wikitext_split:
+    module: deltas.tokenizers.wikitext_split
+
+diff_engines:
+  segment_matcher:
+    class: deltas.algorithms.SequenceMatcher
+    tokenizer: wikitext_split

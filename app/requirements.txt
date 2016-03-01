@@ -1,0 +1,10 @@
+Flask==0.10.1
+numpy==1.10.4
+scipy==0.16.1
+scikit-learn==0.17
+pandas==0.17.1
+mwparserfromhell==0.4.3
+joblib==0.9.4
+beautifulsoup4==4.4.1
+requests==2.9.1
+
