@@ -55,7 +55,7 @@ def after_request(response):
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--model_paths', required=False,
-    default='model_paths.json',
+    default='/data/project/wiki-talk2/www/python/talk_page_abuse/app/model_paths_labs.json',
     help='path to json dictionary of model names and paths'
 )
 
