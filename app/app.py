@@ -18,6 +18,10 @@ def main():
 def main2():
     return render_template('index.html')
 
+@app.route('/wiki-talk2/')
+def main2():
+    return render_template('index.html')
+
 
 @app.route('/api')
 def get_insult_scores():
