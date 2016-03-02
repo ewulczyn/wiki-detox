@@ -14,9 +14,11 @@ def get_blocked_users(keywords):
     SELECT 
         log_comment as reason,
         log_timestamp as timestamp,
-        log_title as user_text
+        log_title as user_text,
+        log_action as log_action
     FROM enwiki.logging 
         WHERE log_type = 'block'
+        AND log_action = 'block'
         AND log_comment RLIKE %(keywords)s
     """
 

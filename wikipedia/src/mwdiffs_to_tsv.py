@@ -14,16 +14,20 @@ on stat1003:
 source ~/env/source 3.4/bin/activate
 
 nice python ~/mwdiffs_to_tsv.py \
---path_glob /srv/ellery/talk_diffs/enwiki-20160113-pages-meta-history10.xml-\*.bz2  \
---output_dir /srv/ellery/talk_diff_tsvs
+--path_glob /srv/ellery/talk_diffs/enwiki-20160113-pages-meta-history\*.bz2  \
+--output_dir /srv/public-datasets/enwiki/user_talk_diffs
 
 """
 
+def clean(s):
+    s = s.replace('\t', 'TAB')
+    s = s.replace('\n', 'NEWLINE')
+    return s
 
 def get_features(obj):
     f = {}
     if 'comment' in obj:
-        f['rev_comment'] = obj['comment']
+        f['rev_comment'] = clean(obj['comment'])
         
     f['insert_only'] = 1
     if 'diff' in obj:
@@ -33,7 +37,7 @@ def get_features(obj):
                     if 'tokens' in e:
                         insertion = ''.join(e['tokens'])
                         if len(insertion) > 0:
-                            f['insertion'] = insertion
+                            f['insertion'] = clean(insertion)
                 else:
                     f['insert_only'] = 0
     if 'id' in obj:
@@ -43,7 +47,7 @@ def get_features(obj):
         if 'id' in obj['page']:
             f['page_id'] = obj['page']['id']
         if 'title' in obj['page']:
-            f['page_title'] = obj['page']['title']
+            f['page_title'] = clean(obj['page']['title'])
             
     if 'timestamp' in obj:
         f['rev_timestamp'] = obj['timestamp']
@@ -53,7 +57,7 @@ def get_features(obj):
         if 'id' in obj['user']:
             f['user_id'] = obj['user']['id']
         if 'text' in obj['user']:
-            f['user_text'] = obj['user']['text']
+            f['user_text'] = clean(obj['user']['text'])
     return f
 
 
