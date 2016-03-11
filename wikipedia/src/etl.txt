@@ -89,6 +89,7 @@ SELECT
   a.log_id,
   CAST(a.log_comment AS CHAR(255) CHARSET utf8) AS log_comment,
   CAST(DATE_FORMAT(STR_TO_DATE(a.log_timestamp, "%Y%m%d%H%i%S"), "%Y-%m-%dT%H:%i:%SZ") AS CHAR(22) CHARSET utf8) AS log_timestamp,
+  CAST(a.log_params AS CHAR(255) CHARSET utf8) AS log_params,
   CAST(a.log_title AS CHAR(255) CHARSET utf8) AS log_title,
   CAST(a.log_action AS CHAR(32) CHARSET utf8) AS log_action,
   CAST(a.log_type AS CHAR(32) CHARSET utf8) AS log_type
@@ -123,10 +124,11 @@ LOCATION '/user/ellery/user_talk_diffs';
 DROP TABLE IF EXISTS blocked_user;
 CREATE TABLE blocked_user
 AS SELECT 
-  log_title as user_text,
+  REGEXP_REPLACE(REGEXP_REPLACE(log_title, '_', ' '), 'User:', '')  as user_text,
   CONCAT_WS('|', COLLECT_LIST(log_comment)) as reasons,
   CONCAT_WS('|', COLLECT_LIST(log_timestamp)) timestamps,
-  CONCAT_WS('|', COLLECT_LIST(log_action)) actions
+  CONCAT_WS('|', COLLECT_LIST(log_action)) actions,
+  CONCAT_WS('|', COLLECT_LIST(log_params)) params
 FROM enwiki.logging 
 WHERE
   log_type = 'block'
