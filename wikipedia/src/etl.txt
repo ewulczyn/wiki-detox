@@ -141,6 +141,7 @@ AS SELECT
   d.*,
   reasons as block_reasons,
   timestamps block_timestamps,
-  actions block_actions
+  actions block_actions,
+  params as block_params
 FROM user_talk_diff d JOIN blocked_user u
 ON d.user_text = u.user_text;
