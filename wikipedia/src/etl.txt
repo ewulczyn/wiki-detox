@@ -103,8 +103,8 @@ SELECT * FROM page, revision
 WHERE page.page_id = revision.rev_page
 AND page_namespace = 3;
 
-
-CREATE EXTERNAL TABLE user_talk_diff (
+DROP TABLE If EXISTS user_talk_diff_external;
+CREATE EXTERNAL TABLE user_talk_diff_external (
     rev_comment STRING,
     insertion STRING,
     insert_only STRING,
@@ -121,14 +121,68 @@ STORED AS TEXTFILE
 LOCATION '/user/ellery/user_talk_diffs';
 
 
+# Repartitioning the data to be in chunks of 100MB
+SET mapreduce.job.queuename=priority;
+SET mapreduce.input.fileinputformat.split.maxsize=100000000;
+SET mapreduce.input.fileinputformat.split.minsize=100000000;
+DROP TABLE If EXISTS user_talk_diff;
+CREATE TABLE user_talk_diff
+AS SELECT
+    rev_comment,
+    SUBSTRING(insertion, 0, 10000) as insertion,
+    insert_only,
+    rev_id,
+    page_id,
+    page_title,
+    rev_timestamp,
+    user_id,
+    user_text
+FROM
+  user_talk_diff_external;
+
+
+DROP TABLE IF EXISTS user_talk_diff_no_admin;
+CREATE TABLE user_talk_diff_no_admin AS
+SELECT 
+  * FROM user_talk_diff
+WHERE
+  insertion NOT RLIKE '\\[\\[Image:Octagon-warning'
+  AND insertion NOT RLIKE '\\[\\[Image:Stop'
+  AND insertion NOT RLIKE '\\[\\[Image:Information.'
+  AND insertion NOT RLIKE '\\[\\[Image:Copyright-problem'
+  AND insertion NOT RLIKE '\\[\\[Image:Ambox'
+  AND insertion NOT RLIKE '\\[\\[Image:Broom'
+  AND insertion NOT RLIKE '\\[\\[File:Information'
+  AND insertion NOT RLIKE '\\[\\[File:AFC-Logo_Decline'
+  AND insertion NOT RLIKE '\\[\\[File:Ambox'
+  AND insertion NOT RLIKE '\\[\\[File:Nuvola'
+  AND insertion NOT RLIKE '\\[\\[File:Stop'
+  AND insertion NOT RLIKE '\\[\\[File:Copyright-problem'
+  AND insertion NOT RLIKE '\\|alt=Warning icon\\]\\]'
+  AND insertion NOT RLIKE 'The article .* has been \\[\\[Wikipedia:Proposed deletion\\|proposed for deletion\\]\\]'
+  AND insertion NOT RLIKE 'Your submission at \\[\\[Wikipedia:Articles for creation\\|Articles for creation\\]\\]'
+  AND insertion NOT RLIKE 'A file that you uploaded or altered, .*, has been listed at \\[\\[Wikipedia:Possibly unfree files\\]\\]'
+  AND insertion NOT RLIKE 'User:SuggestBot'
+  AND insertion NOT RLIKE '\\[\\[Wikipedia:Criteria for speedy deletion\\|Speedy deletion\\]\\] nomination of'
+  AND insertion NOT RLIKE 'Please stop your \\[\\[Wikipedia:Disruptive editing\\|disruptive editing\\]\\]. If you continue to \\[\\[Wikipedia:Vandalism\\|vandalize\\]\\] Wikipedia, as you did to .*, you may be \\[\\[Wikipedia:Blocking policy\\|blocked from editing\\]\\]'
+  AND insertion NOT RLIKE 'Hello.*and.*\\[\\[Project:Introduction\\|welcome\\]\\].* to Wikipedia!'
+  AND insertion NOT RLIKE 'Nomination of .* for deletion'
+  AND insertion NOT RLIKE '== Speedy deletion nomination of'
+  AND insertion NOT RLIKE '==.*Welcome.*=='
+  AND insertion NOT RLIKE "==.*You're invited!.*=="
+  AND insertion NOT RLIKE '== 5 Million: We celebrate your contribution =='
+  AND insertion NOT RLIKE '==.*listed for discussion =='
+;
+
+
 DROP TABLE IF EXISTS blocked_user;
 CREATE TABLE blocked_user
 AS SELECT 
   REGEXP_REPLACE(REGEXP_REPLACE(log_title, '_', ' '), 'User:', '')  as user_text,
-  CONCAT_WS('|', COLLECT_LIST(log_comment)) as reasons,
-  CONCAT_WS('|', COLLECT_LIST(log_timestamp)) timestamps,
-  CONCAT_WS('|', COLLECT_LIST(log_action)) actions,
-  CONCAT_WS('|', COLLECT_LIST(log_params)) params
+  CONCAT_WS('PIPE', COLLECT_LIST(log_comment)) as reasons,
+  CONCAT_WS('PIPE', COLLECT_LIST(log_timestamp)) timestamps,
+  CONCAT_WS('PIPE', COLLECT_LIST(log_action)) actions,
+  CONCAT_WS('PIPE', COLLECT_LIST(log_params)) params
 FROM enwiki.logging 
 WHERE
   log_type = 'block'
@@ -144,4 +198,15 @@ AS SELECT
   actions block_actions,
   params as block_params
 FROM user_talk_diff d JOIN blocked_user u
+ON d.user_text = u.user_text;
+
+DROP TABLE IF EXISTS blocked_user_talk_diff_no_admin;
+CREATE TABLE blocked_user_talk_diff_no_admin
+AS SELECT
+  d.*,
+  reasons as block_reasons,
+  timestamps block_timestamps,
+  actions block_actions,
+  params as block_params
+FROM user_talk_diff_no_admin d JOIN blocked_user u
 ON d.user_text = u.user_text;
