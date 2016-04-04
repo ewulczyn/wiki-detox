@@ -14,14 +14,6 @@ app.debug = True
 def main():
     return render_template('index.html')
 
-@app.route('/wiki-talk/')
-def main2():
-    return render_template('index.html')
-
-@app.route('/wiki-talk2/')
-def main2():
-    return render_template('index.html')
-
 
 @app.route('/api')
 def get_insult_scores():
@@ -59,7 +51,7 @@ def after_request(response):
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--model_paths', required=False,
-    default='/data/project/wiki-talk2/www/python/talk_page_abuse/app/model_paths_labs.json',
+    default='./model_paths.json',
     help='path to json dictionary of model names and paths'
 )
 
@@ -71,6 +63,7 @@ parser.add_argument(
 
 args, unknown = parser.parse_known_args()
 model_paths = json.load(open(args.model_paths))
+print(model_paths)
 models = {k : joblib.load(v) for k,v in model_paths.items()}
 
 
