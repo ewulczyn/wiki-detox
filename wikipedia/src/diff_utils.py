@@ -3,6 +3,10 @@ import  mwparserfromhell
 import re
 import pandas as pd
 import copy
+import time
+
+
+### Diff Cleaning ###
 
 months = ['January',
           'February',
@@ -58,7 +62,6 @@ def clean(df):
     df.rename(columns = {'insertion': 'diff'}, inplace = True)
     df.dropna(subset = ['diff'], inplace = True)
     df['clean_diff'] = df['diff']
-    
     df['clean_diff'] = df['clean_diff'].apply(remove_date)
     df['clean_diff'] = df['clean_diff'].apply(lambda x: substitute_patterns(x, pre_sub_patterns))
     df['clean_diff'] = df['clean_diff'].apply(strip_mw)
@@ -82,6 +85,10 @@ def show_comments(d, n = 10):
         print('_' * 80)
         print(r['clean_diff'])
         print('\n\n', '#' * 80, '\n\n')
+
+
+### Admin Filtering ###
+# Currently done in HIVE
 
 def find_pattern(d, pattern, column):
     p = re.compile(pattern)
@@ -134,6 +141,21 @@ patterns =[
     ]
 
 
+
+def clean_and_filter(df, min_words=3, min_chars=20):
+    t1 = time.time()
+    print('Raw:', df.shape[0])
+    df = clean(df)
+    print('Cleaned: ', df.shape[0])
+    df = exclude_few_tokens(df, min_words)
+    print('No Few Words: ', df.shape[0])
+    df = exclude_short_strings(df, min_chars)
+    print('No Few Chars: ', df.shape[0])
+    t2 = time.time()
+    print('Cleaning and Filtering Time:',(t2-t1) / 60.0)
+    return df
+
+### Data Viz ###
 def print_block_data(r):
     block_reasons = r['block_reasons'].split('PIPE')
     block_timestamps = r['block_timestamps'].split('PIPE')

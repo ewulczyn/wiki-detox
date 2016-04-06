@@ -10,6 +10,7 @@ sqoop import                                                      \
   --hive-database enwiki                                        \
   --create-hive-table                                               \
   --hive-table revision                                          \
+  --hive-delims-replacement ' '                                  \
   --query '
 SELECT
   rev_id,
@@ -40,6 +41,7 @@ sqoop import                                                        \
   --hive-database enwiki                                      \
   --create-hive-table                                               \
   --hive-table page                                   \
+  --hive-delims-replacement ' '                                  \
   --query '
 SELECT
   a.page_id,
@@ -61,7 +63,8 @@ sqoop import                                                        \
   --hive-import                                                     \
   --hive-database enwiki                                      \
   --create-hive-table                                               \
-  --hive-table user                                   \
+  --hive-table user                                                 \
+  --hive-delims-replacement ' '                                  \
   --query '
 SELECT
   a.user_id AS user_id,
@@ -83,7 +86,8 @@ sqoop import                                                        \
   --hive-import                                                     \
   --hive-database enwiki                                      \
   --create-hive-table                                               \
-  --hive-table logging                                   \
+  --hive-table logging                                            \
+  --hive-delims-replacement ' '                                  \
   --query '
 SELECT
   a.log_id,
@@ -174,6 +178,19 @@ WHERE
   AND insertion NOT RLIKE '==.*listed for discussion =='
 ;
 
+DROP TABLE IF EXISTS block_events;
+CREATE TABLE block_events
+AS SELECT 
+  REGEXP_REPLACE(REGEXP_REPLACE(log_title, '_', ' '), 'User:', '')  as user_text,
+  log_comment AS reason,
+  log_timestamp AS timestamp,
+  log_params AS params
+FROM enwiki.logging 
+WHERE
+  log_type = 'block'
+  AND log_action in ('block', 'reblock')
+  AND LOWER(log_comment) RLIKE 'harassment|personal attack';
+
 
 DROP TABLE IF EXISTS blocked_user;
 CREATE TABLE blocked_user
@@ -186,8 +203,21 @@ AS SELECT
 FROM enwiki.logging 
 WHERE
   log_type = 'block'
-  AND log_comment RLIKE 'harassment|personal attack'
+  AND LOWER(log_comment) RLIKE 'harassment|personal attack'
+  AND log_action in ('block', 'reblock')
 GROUP BY log_title;
+
+DROP TABLE IF EXISTS blocked_user_talk_diff_no_admin;
+CREATE TABLE blocked_user_talk_diff_no_admin
+AS SELECT
+  d.*,
+  reasons as block_reasons,
+  timestamps block_timestamps,
+  actions block_actions,
+  params as block_params
+FROM user_talk_diff_no_admin d JOIN blocked_user u
+ON d.user_text = u.user_text;
+
 
 DROP TABLE IF EXISTS blocked_user_talk_diff;
 CREATE TABLE blocked_user_talk_diff
@@ -200,13 +230,4 @@ AS SELECT
 FROM user_talk_diff d JOIN blocked_user u
 ON d.user_text = u.user_text;
 
-DROP TABLE IF EXISTS blocked_user_talk_diff_no_admin;
-CREATE TABLE blocked_user_talk_diff_no_admin
-AS SELECT
-  d.*,
-  reasons as block_reasons,
-  timestamps block_timestamps,
-  actions block_actions,
-  params as block_params
-FROM user_talk_diff_no_admin d JOIN blocked_user u
-ON d.user_text = u.user_text;
+
