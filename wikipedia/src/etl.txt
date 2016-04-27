@@ -101,11 +101,12 @@ FROM logging a
 WHERE $CONDITIONS
 '
 
-
 CREATE TABLE user_talk_revision AS
 SELECT * FROM page, revision
 WHERE page.page_id = revision.rev_page
 AND page_namespace = 3;
+
+
 
 DROP TABLE If EXISTS user_talk_diff_external;
 CREATE EXTERNAL TABLE user_talk_diff_external (
@@ -122,16 +123,38 @@ CREATE EXTERNAL TABLE user_talk_diff_external (
 DELIMITED FIELDS TERMINATED BY '\t'
 LINES TERMINATED BY '\n' 
 STORED AS TEXTFILE
-LOCATION '/user/ellery/user_talk_diffs';
+LOCATION '/user/ellery/user_talk_diffs_tsv';
+
+
+DROP TABLE If EXISTS article_talk_diff_external;
+CREATE EXTERNAL TABLE article_talk_diff_external (
+    rev_comment STRING,
+    insertion STRING,
+    insert_only STRING,
+    rev_id STRING,
+    page_id STRING,
+    page_title STRING,
+    rev_timestamp STRING,
+    user_id STRING,
+    user_text STRING
+) ROW FORMAT
+DELIMITED FIELDS TERMINATED BY '\t'
+LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
+LOCATION '/user/ellery/article_talk_diffs_tsv';
+
+
 
 
 # Repartitioning the data to be in chunks of 100MB
 SET mapreduce.job.queuename=priority;
 SET mapreduce.input.fileinputformat.split.maxsize=100000000;
 SET mapreduce.input.fileinputformat.split.minsize=100000000;
-DROP TABLE If EXISTS user_talk_diff;
-CREATE TABLE user_talk_diff
-AS SELECT
+
+DROP TABLE If EXISTS talk_diff;
+CREATE TABLE talk_diff AS
+SELECT
+    'user' AS namespace,
     rev_comment,
     SUBSTRING(insertion, 0, 10000) as insertion,
     insert_only,
@@ -145,12 +168,32 @@ FROM
   user_talk_diff_external;
 
 
-DROP TABLE IF EXISTS user_talk_diff_no_admin;
-CREATE TABLE user_talk_diff_no_admin AS
+INSERT INTO TABLE talk_diff
+SELECT
+    'article' AS namespace,
+    rev_comment,
+    SUBSTRING(insertion, 0, 10000) as insertion,
+    insert_only,
+    rev_id,
+    page_id,
+    page_title,
+    rev_timestamp,
+    user_id,
+    user_text
+FROM
+  article_talk_diff_external;
+
+
+
+DROP TABLE IF EXISTS talk_diff_no_admin;
+CREATE TABLE talk_diff_no_admin AS
 SELECT 
-  * FROM user_talk_diff
+  * 
+FROM
+  talk_diff
 WHERE
-  insertion NOT RLIKE '\\[\\[Image:Octagon-warning'
+  (namespace = 'user'
+  AND insertion NOT RLIKE '\\[\\[Image:Octagon-warning'
   AND insertion NOT RLIKE '\\[\\[Image:Stop'
   AND insertion NOT RLIKE '\\[\\[Image:Information.'
   AND insertion NOT RLIKE '\\[\\[Image:Copyright-problem'
@@ -175,8 +218,14 @@ WHERE
   AND insertion NOT RLIKE '==.*Welcome.*=='
   AND insertion NOT RLIKE "==.*You're invited!.*=="
   AND insertion NOT RLIKE '== 5 Million: We celebrate your contribution =='
-  AND insertion NOT RLIKE '==.*listed for discussion =='
+  AND insertion NOT RLIKE '==.*listed for discussion ==')
+  OR (namespace = 'article')
 ;
+
+
+
+
+
 
 DROP TABLE IF EXISTS block_events;
 CREATE TABLE block_events
@@ -207,15 +256,15 @@ WHERE
   AND log_action in ('block', 'reblock')
 GROUP BY log_title;
 
-DROP TABLE IF EXISTS blocked_user_talk_diff_no_admin;
-CREATE TABLE blocked_user_talk_diff_no_admin
+DROP TABLE IF EXISTS blocked_talk_diff_no_admin;
+CREATE TABLE blocked_talk_diff_no_admin
 AS SELECT
   d.*,
   reasons as block_reasons,
   timestamps block_timestamps,
   actions block_actions,
   params as block_params
-FROM user_talk_diff_no_admin d JOIN blocked_user u
+FROM talk_diff_no_admin d JOIN blocked_user u
 ON d.user_text = u.user_text;
 
 
