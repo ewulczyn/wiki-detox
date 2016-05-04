@@ -20,6 +20,10 @@ import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import tensorflow as tf
+import numpy as np
+
+
 
 def get_labeled_comments(d, labels):
     """
@@ -28,9 +32,8 @@ def get_labeled_comments(d, labels):
     c = d[['rev_id', 'clean_diff']].drop_duplicates(subset = 'rev_id')
     c.index = c.rev_id
     c = c['clean_diff']
-    data = pd.DataFrame()
-    data['x'] = c
-    data['y'] = labels
+    c.name = 'x'
+    data = pd.concat([c, labels], axis = 1)
     return data.dropna()
 
 def split(data, test_size = 0.2,):
@@ -137,3 +140,107 @@ def plot_adding_other_data(ms, metrics):
 
 
 
+
+
+def epoch_and_batch_iter(X,y, batch_size, num_epochs):
+    """
+    Generates a batch iterator for a dataset.
+    """
+    
+    for epoch in range(num_epochs):
+       yield batch_iter(X, y, batch_size)
+
+
+def batch_iter(X, y, batch_size):
+
+    if not isinstance(y, np.ndarray):
+        y = y.values
+
+    if not isinstance(X, np.ndarray):
+        X = X.values
+
+    
+    m = len(y)
+    num_batches_per_epoch = int(float(m)/batch_size) + 1
+
+    shuffle_indices = np.random.permutation(np.arange(m))
+    shuffled_X = X[shuffle_indices]
+    shuffled_y = y[shuffle_indices]
+    for batch_num in range(num_batches_per_epoch):
+        start_index = batch_num * batch_size
+        end_index = min((batch_num + 1) * batch_size, m)
+        yield shuffled_X[start_index:end_index], shuffled_y[start_index:end_index]
+
+
+
+
+
+def ED_CLF(X_train,
+          y_train,
+          X_test,
+          y_test,
+          learning_rate = 0.001,
+          training_epochs = 60,
+          batch_size = 200,
+          display_step = 5,
+         ):
+
+    n_input = X_train.shape[1]
+    n_classes = y_train.shape[1]
+
+    # tf Graph input
+    x = tf.placeholder("float", [None, n_input])
+    y = tf.placeholder("float", [None, n_classes])
+
+    # Create model
+    def LG(_X, _weights, _biases):
+        return tf.matmul(_X, _weights['out']) + _biases['out']
+
+    # Store layers weight & bias
+    weights = {
+        'out': tf.Variable(tf.random_normal([n_input, n_classes]))
+    }
+    biases = {
+        'out': tf.Variable(tf.random_normal([n_classes]))
+    }
+
+    # Construct model
+    pred = LG(x, weights, biases)
+
+    # Define loss and optimizer
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, y)) # Softmax loss
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost) # Adam Optimizer
+
+    # Initializing the variables
+    init = tf.initialize_all_variables()
+
+    # Launch the graph
+
+    sess = tf.Session()
+
+    sess.run(init)
+
+    # Training cycle
+    for epoch in range(training_epochs):
+        avg_cost = 0.
+        m = 0
+        batches = batch_iter(X_train.toarray(), y_train, batch_size)
+        # Loop over all batches
+        for batch_xs, batch_ys in batches:
+            batch_m = len(batch_ys)
+            m += batch_m
+            # Fit training using batch data
+            sess.run(optimizer, feed_dict={x: batch_xs, y: batch_ys})
+            # Compute average loss
+            avg_cost += sess.run(cost, feed_dict={x: batch_xs, y: batch_ys}) * batch_m
+        # Display logs per epoch step
+        if epoch % display_step == 0:
+            print ("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost/m))
+            correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+            # Calculate accuracy
+            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+            print ("Accuracy:", accuracy.eval({x: X_train.toarray(), y: y_train}, session=sess))
+            print ("Accuracy:", accuracy.eval({x: X_test.toarray(), y: y_test}, session=sess))    
+
+
+    print ("Optimization Finished!")

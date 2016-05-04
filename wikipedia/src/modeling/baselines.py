@@ -78,13 +78,17 @@ def average(l):
     """
     Average all labels with the same rev_id
     """
-    return l.groupby(l.index).mean()
+    s = l.groupby(l.index).mean()
+    s.name = 'y'
+    return s
 
 def plurality(l):
     """
     Take the most common label from all labels with the same rev_id
     """
-    return l.groupby(l.index).apply(lambda x:x.value_counts().index[0])
+    s = l.groupby(l.index).apply(lambda x:x.value_counts().index[0])
+    s.name = 'y'
+    return s
 
 def empirical_dist(l, w = 0.5):
 
@@ -93,15 +97,15 @@ def empirical_dist(l, w = 0.5):
     using all labels with the same rev_id
     """
 
-    index = list(set(l.dropna.values))
-    data = []
+    index = list(set(l.dropna().values))
+    data = {}
     for k, g in l.groupby(l.index):
-        data.append(g.value_counts().reindex(index).fillna(0) + w)
-    
-    labels = pd.DataFrame(data)
+        data[k] = g.value_counts().reindex(index).fillna(0) + w
+
+    labels = pd.DataFrame(data).T
     labels = labels.fillna(0)
     labels = labels.div(labels.sum(axis=1), axis=0)
-    return labels.values
+    return labels
 
 
 # Evaluation Metrics
