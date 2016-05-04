@@ -215,9 +215,7 @@ def ED_CLF(X_train,
     init = tf.initialize_all_variables()
 
     # Launch the graph
-
     sess = tf.Session()
-
     sess.run(init)
 
     # Training cycle
