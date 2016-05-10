@@ -30,14 +30,14 @@ nice python ~/mwdiffs_to_tsv.py \
 --output_dir ${tsv_dir}
 
 
-rsync -avzh stat1003.eqiad.wmnet:/srv/public-datasets/enwiki/article_talk_diffs_tsv ~/talk_page_abuse/wikipedia/data
+rsync -avzh stat1003.eqiad.wmnet:/srv/public-datasets/enwiki/${name}_diffs_tsv ~/talk_page_abuse/wikipedia/data
 
-rsync -avzh ~/talk_page_abuse/wikipedia/data/article_talk_diffs_tsv stat1002.eqiad.wmnet:/home/ellery/talk_page_abuse/wikipedia/data
+rsync -avzh ~/talk_page_abuse/wikipedia/data/${name}_diffs_tsv stat1002.eqiad.wmnet:/home/ellery/talk_page_abuse/wikipedia/data
 
-cd ~/talk_page_abuse/wikipedia/data/article_talk_diffs_tsv
+cd ~/talk_page_abuse/wikipedia/data/${name}_diffs_tsv
 
 bzip2 -d *.bz2
 
 cd ..
 
-hadoop fs -copyFromLocal article_talk_diffs_tsv /user/ellery/article_talk_diffs_tsv
+hadoop fs -copyFromLocal ${name}_diffs_tsv /user/ellery/${name}_diffs_tsv

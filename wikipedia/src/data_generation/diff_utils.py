@@ -50,11 +50,19 @@ def substitute_patterns(s, sub_patterns):
     return s
 
 def strip_html(s):
-    s = BeautifulSoup(s, 'html.parser').get_text()
+    try:
+        s = BeautifulSoup(s, 'html.parser').get_text()
+    except:
+        pass
+        #print('BS4 HTML PARSER FAILED ON:', s)
     return s
 
-def strip_mw(comment):
-    return mwparserfromhell.parse(comment).strip_code()
+def strip_mw(s):
+    try:
+        s = mwparserfromhell.parse(s).strip_code()
+    except:
+        pass
+    return s
 
 
 def clean(df):
@@ -99,10 +107,10 @@ def exclude_pattern(d, pattern, column):
     return d[ d[column].apply(lambda x: p.search(x) is None)]
 
 def exclude_few_tokens(d, n):
-    return d[d['clean_diff'].apply(lambda x: len(x.split(' ')) > n)]
+    return d[d['clean_diff'].apply(lambda x:  len(x.split(' ')) > n)]
 
 def exclude_short_strings(d, n):
-    return d[d['clean_diff'].apply(lambda x: len(x) > n)]  
+    return d[d['clean_diff'].apply(lambda x:  len(x) > n)]  
 
 def remove_admin(d, patterns):
     d_reduced = copy.deepcopy(d)
@@ -123,9 +131,6 @@ patterns =[
     '\[\[File:Nuvola',
     '\[\[File:Stop',
     '\[\[File:Copyright-problem',
-    '\[\[File:Copyright-problem',
-    '\[\[File:Copyright-problem',
-    '\[\[File:Copyright-problem',
     '\|alt=Warning icon\]\]',
     'The article .* has been \[\[Wikipedia:Proposed deletion\|proposed for deletion\]\]',
     'Your submission at \[\[Wikipedia:Articles for creation\|Articles for creation\]\]',
@@ -135,9 +140,9 @@ patterns =[
     "Please stop your \[\[Wikipedia:Disruptive editing\|disruptive editing\]\]. If you continue to \[\[Wikipedia:Vandalism\|vandalize\]\] Wikipedia, as you did to .*, you may be \[\[Wikipedia:Blocking policy\|blocked from editing\]\]",
     "Hello.*and.*\[\[Project:Introduction\|welcome\]\].* to Wikipedia!",
     'Nomination of .* for deletion',
-    '== Welcome to Wikipedia! ==',
-    '== Welcome! ==',
+    '==.*Welcome.*==',
     '== 5 Million: We celebrate your contribution ==',
+    '==.*listed for discussion ==',
     ]
 
 
@@ -145,7 +150,7 @@ patterns =[
 def clean_and_filter(df, min_words=3, min_chars=20):
     t1 = time.time()
     print('Raw:', df.shape[0])
-    df = clean(df)
+    df = clean(df).dropna(subset = ['clean_diff'])
     print('Cleaned: ', df.shape[0])
     df = exclude_few_tokens(df, min_words)
     print('No Few Words: ', df.shape[0])

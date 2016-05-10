@@ -90,14 +90,14 @@ def plurality(l):
     s.name = 'y'
     return s
 
-def empirical_dist(l, w = 0.5):
+def empirical_dist(l, w = 0.5, index = None):
 
     """
     Compute empirical distribution over all classes
     using all labels with the same rev_id
     """
-
-    index = list(set(l.dropna().values))
+    if not index:
+        index = sorted(list(set(l.dropna().values)))
     data = {}
     for k, g in l.groupby(l.index):
         data[k] = g.value_counts().reindex(index).fillna(0) + w

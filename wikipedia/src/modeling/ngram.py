@@ -22,7 +22,10 @@ import seaborn as sns
 
 import tensorflow as tf
 import numpy as np
+from sklearn import metrics, cross_validation
 
+from sklearn.metrics import roc_curve, auc
+from scipy import interp
 
 
 def get_labeled_comments(d, labels):
@@ -209,6 +212,7 @@ def ED_CLF(X_train,
 
     # Define loss and optimizer
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, y)) # Softmax loss
+    cost += 5e-4 * tf.nn.l2_loss(weights['out']) # Regularization
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost) # Adam Optimizer
 
     # Initializing the variables
@@ -234,11 +238,85 @@ def ED_CLF(X_train,
         # Display logs per epoch step
         if epoch % display_step == 0:
             print ("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost/m))
-            correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-            # Calculate accuracy
-            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-            print ("Accuracy:", accuracy.eval({x: X_train.toarray(), y: y_train}, session=sess))
-            print ("Accuracy:", accuracy.eval({x: X_test.toarray(), y: y_test}, session=sess))    
 
+            correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+            print ("Train Accuracy:", accuracy.eval({x: X_train.toarray(), y: y_train}, session=sess))
+            print ("Test Accuracy:", accuracy.eval({x: X_test.toarray(), y: y_test}, session=sess)) 
+
+            
+            
 
     print ("Optimization Finished!")
+    y_score = np.array(pred.eval({x: X_test.toarray()}, session=sess))
+    multi_class_roc(y_test, y_score)
+
+
+def multi_class_roc(y_test, y_score):
+    """
+    http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html
+    """
+
+    y = np.zeros(y_test.shape)
+    y[list(range(y_test.shape[0])), y_test.argmax(axis = 1)] = 1
+    y_test = y
+
+    n_classes = y_test.shape[1]
+    # Compute ROC curve and ROC area for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_score[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Compute micro-average ROC curve and ROC area
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_test.ravel(), y_score.ravel())
+    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+
+
+    ##############################################################################
+    # Plot ROC curves for the multiclass problem
+
+    # Compute macro-average ROC curve and ROC area
+
+    # First aggregate all false positive rates
+    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+
+    # Then interpolate all ROC curves at this points
+    mean_tpr = np.zeros_like(all_fpr)
+    for i in range(n_classes):
+        mean_tpr += interp(all_fpr, fpr[i], tpr[i])
+
+    # Finally average it and compute AUC
+    mean_tpr /= n_classes
+
+    fpr["macro"] = all_fpr
+    tpr["macro"] = mean_tpr
+    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+
+    # Plot all ROC curves
+    plt.figure()
+    plt.plot(fpr["micro"], tpr["micro"],
+             label='micro-average ROC curve (area = {0:0.2f})'
+                   ''.format(roc_auc["micro"]),
+             linewidth=2)
+
+    plt.plot(fpr["macro"], tpr["macro"],
+             label='macro-average ROC curve (area = {0:0.2f})'
+                   ''.format(roc_auc["macro"]),
+             linewidth=2)
+
+    for i in range(n_classes):
+        plt.plot(fpr[i], tpr[i], label='ROC curve of class {0} (area = {1:0.2f})'
+                                       ''.format(i, roc_auc[i]))
+
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Some extension of Receiver operating characteristic to multi-class')
+    plt.legend(loc="lower right")
+    plt.show()

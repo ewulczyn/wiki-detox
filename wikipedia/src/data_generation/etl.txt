@@ -101,10 +101,19 @@ FROM logging a
 WHERE $CONDITIONS
 '
 
-CREATE TABLE user_talk_revision AS
-SELECT * FROM page, revision
-WHERE page.page_id = revision.rev_page
-AND page_namespace = 3;
+CREATE TABLE user_talk_revision
+ROW FORMAT
+DELIMITED FIELDS TERMINATED BY '\t'
+LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE AS
+SELECT
+  *
+FROM
+  page,
+  revision
+WHERE
+  page.page_id = revision.rev_page
+  AND page_namespace = 3;
 
 
 
@@ -119,9 +128,10 @@ CREATE EXTERNAL TABLE user_talk_diff_external (
     rev_timestamp STRING,
     user_id STRING,
     user_text STRING
-) ROW FORMAT
-DELIMITED FIELDS TERMINATED BY '\t'
-LINES TERMINATED BY '\n' 
+)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
 STORED AS TEXTFILE
 LOCATION '/user/ellery/user_talk_diffs_tsv';
 
@@ -137,9 +147,9 @@ CREATE EXTERNAL TABLE article_talk_diff_external (
     rev_timestamp STRING,
     user_id STRING,
     user_text STRING
-) ROW FORMAT
-DELIMITED FIELDS TERMINATED BY '\t'
-LINES TERMINATED BY '\n' 
+) ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
 STORED AS TEXTFILE
 LOCATION '/user/ellery/article_talk_diffs_tsv';
 
@@ -150,85 +160,165 @@ LOCATION '/user/ellery/article_talk_diffs_tsv';
 SET mapreduce.job.queuename=priority;
 SET mapreduce.input.fileinputformat.split.maxsize=100000000;
 SET mapreduce.input.fileinputformat.split.minsize=100000000;
+SET hive.exec.max.dynamic.partitions.pernode=250;
+SET hive.exec.dynamic.partition.mode=nonstrict;
 
-DROP TABLE If EXISTS talk_diff;
-CREATE TABLE talk_diff AS
-SELECT
-    'user' AS namespace,
-    rev_comment,
-    SUBSTRING(insertion, 0, 10000) as insertion,
-    insert_only,
-    rev_id,
-    page_id,
-    page_title,
-    rev_timestamp,
-    user_id,
-    user_text
+DROP TABLE If EXISTS user_talk_diff;
+CREATE TABLE user_talk_diff 
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
+AS SELECT
+  *
 FROM
   user_talk_diff_external;
 
+DROP TABLE IF EXISTS user_talk_diff_no_bot;
+CREATE TABLE user_talk_diff_no_bot (
+    rev_comment STRING,
+    insertion STRING,
+    insert_only STRING,
+    rev_id STRING,
+    page_id STRING,
+    page_title STRING,
+    rev_timestamp STRING,
+    user_id STRING,
+    user_text STRING
+)
+PARTITIONED BY (year STRING)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE;
 
-INSERT INTO TABLE talk_diff
+
+INSERT OVERWRITE TABLE user_talk_diff_no_bot
+PARTITION (year)
 SELECT
-    'article' AS namespace,
     rev_comment,
-    SUBSTRING(insertion, 0, 10000) as insertion,
+    SUBSTRING(insertion, 0, 5000) as insertion,
     insert_only,
     rev_id,
     page_id,
     page_title,
     rev_timestamp,
     user_id,
-    user_text
+    user_text,
+    SUBSTRING(rev_timestamp, 1, 4) as year
 FROM
-  article_talk_diff_external;
-
-
-
-DROP TABLE IF EXISTS talk_diff_no_admin;
-CREATE TABLE talk_diff_no_admin AS
-SELECT 
-  * 
-FROM
-  talk_diff
+  user_talk_diff
 WHERE
-  (namespace = 'user'
-  AND insertion NOT RLIKE '\\[\\[Image:Octagon-warning'
-  AND insertion NOT RLIKE '\\[\\[Image:Stop'
-  AND insertion NOT RLIKE '\\[\\[Image:Information.'
-  AND insertion NOT RLIKE '\\[\\[Image:Copyright-problem'
-  AND insertion NOT RLIKE '\\[\\[Image:Ambox'
-  AND insertion NOT RLIKE '\\[\\[Image:Broom'
-  AND insertion NOT RLIKE '\\[\\[File:Information'
-  AND insertion NOT RLIKE '\\[\\[File:AFC-Logo_Decline'
-  AND insertion NOT RLIKE '\\[\\[File:Ambox'
-  AND insertion NOT RLIKE '\\[\\[File:Nuvola'
-  AND insertion NOT RLIKE '\\[\\[File:Stop'
-  AND insertion NOT RLIKE '\\[\\[File:Copyright-problem'
-  AND insertion NOT RLIKE '\\|alt=Warning icon\\]\\]'
-  AND insertion NOT RLIKE 'The article .* has been \\[\\[Wikipedia:Proposed deletion\\|proposed for deletion\\]\\]'
-  AND insertion NOT RLIKE 'Your submission at \\[\\[Wikipedia:Articles for creation\\|Articles for creation\\]\\]'
-  AND insertion NOT RLIKE 'A file that you uploaded or altered, .*, has been listed at \\[\\[Wikipedia:Possibly unfree files\\]\\]'
-  AND insertion NOT RLIKE 'User:SuggestBot'
-  AND insertion NOT RLIKE '\\[\\[Wikipedia:Criteria for speedy deletion\\|Speedy deletion\\]\\] nomination of'
-  AND insertion NOT RLIKE 'Please stop your \\[\\[Wikipedia:Disruptive editing\\|disruptive editing\\]\\]. If you continue to \\[\\[Wikipedia:Vandalism\\|vandalize\\]\\] Wikipedia, as you did to .*, you may be \\[\\[Wikipedia:Blocking policy\\|blocked from editing\\]\\]'
-  AND insertion NOT RLIKE 'Hello.*and.*\\[\\[Project:Introduction\\|welcome\\]\\].* to Wikipedia!'
-  AND insertion NOT RLIKE 'Nomination of .* for deletion'
-  AND insertion NOT RLIKE '== Speedy deletion nomination of'
-  AND insertion NOT RLIKE '==.*Welcome.*=='
-  AND insertion NOT RLIKE "==.*You're invited!.*=="
-  AND insertion NOT RLIKE '== 5 Million: We celebrate your contribution =='
-  AND insertion NOT RLIKE '==.*listed for discussion ==')
-  OR (namespace = 'article')
+    user_text != 'MediaWiki message delivery'
+    AND user_text != 'Maintenance script'
+    AND user_text NOT RLIKE 'bot|Bot|BOT'
+    AND insertion NOT RLIKE '== Your account will be renamed =='
 ;
 
+DROP TABLE IF EXISTS user_talk_diff_no_bot_sample;
+CREATE TABLE user_talk_diff_no_bot_sample
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
+AS SELECT 
+    *
+FROM
+    enwiki.user_talk_diff_no_bot
+WHERE year > 0
+ORDER BY RAND()
+LIMIT 500000;
+
+
+DROP TABLE IF EXISTS user_talk_diff_no_admin;
+CREATE TABLE user_talk_diff_no_admin (
+    rev_comment STRING,
+    insertion STRING,
+    insert_only STRING,
+    rev_id STRING,
+    page_id STRING,
+    page_title STRING,
+    rev_timestamp STRING,
+    user_id STRING,
+    user_text STRING
+)
+PARTITIONED BY (year STRING)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE;
 
 
 
+INSERT OVERWRITE TABLE user_talk_diff_no_admin
+PARTITION (year)
+SELECT
+    rev_comment,
+    SUBSTRING(insertion, 0, 5000) as insertion,
+    insert_only,
+    rev_id,
+    page_id,
+    page_title,
+    rev_timestamp,
+    user_id,
+    user_text,
+    SUBSTRING(rev_timestamp, 1, 4) as year
+FROM
+  user_talk_diff_no_bot
+WHERE
+    year > 0
+    AND insertion NOT RLIKE '\\[\\[Image:Octagon-warning'
+    AND insertion NOT RLIKE '\\[\\[Image:Stop'
+    AND insertion NOT RLIKE '\\[\\[Image:Information.'
+    AND insertion NOT RLIKE '\\[\\[Image:Copyright-problem'
+    AND insertion NOT RLIKE '\\[\\[Image:Ambox'
+    AND insertion NOT RLIKE '\\[\\[Image:Broom'
+    AND insertion NOT RLIKE '\\[\\[File:Information'
+    AND insertion NOT RLIKE '\\[\\[File:AFC-Logo_Decline'
+    AND insertion NOT RLIKE '\\[\\[File:Ambox'
+    AND insertion NOT RLIKE '\\[\\[File:Nuvola'
+    AND insertion NOT RLIKE '\\[\\[File:Stop'
+    AND insertion NOT RLIKE '\\[\\[File:Copyright-problem'
+    AND insertion NOT RLIKE '\\|alt=Warning icon\\]\\]'
+    AND insertion NOT RLIKE 'The article .* has been \\[\\[Wikipedia:Proposed deletion\\|proposed for deletion\\]\\]'
+    AND insertion NOT RLIKE 'Your submission at \\[\\[Wikipedia:Articles for creation\\|Articles for creation\\]\\]'
+    AND insertion NOT RLIKE 'A file that you uploaded or altered, .*, has been listed at \\[\\[Wikipedia:Possibly unfree files\\]\\]'
+    AND insertion NOT RLIKE 'User:SuggestBot'
+    AND insertion NOT RLIKE '\\[\\[Wikipedia:Criteria for speedy deletion\\|Speedy deletion\\]\\] nomination of'
+    AND insertion NOT RLIKE 'Please stop your \\[\\[Wikipedia:Disruptive editing\\|disruptive editing\\]\\]. If you continue to \\[\\[Wikipedia:Vandalism\\|vandalize\\]\\] Wikipedia, as you did to .*, you may be \\[\\[Wikipedia:Blocking policy\\|blocked from editing\\]\\]'
+    AND insertion NOT RLIKE 'Hello.*and.*\\[\\[Project:Introduction\\|welcome\\]\\].* to Wikipedia!'
+    AND insertion NOT RLIKE 'Nomination of .* for deletion'
+    AND insertion NOT RLIKE '== Speedy deletion nomination of'
+    AND insertion NOT RLIKE '==.*Welcome.*=='
+    AND insertion NOT RLIKE "==.*You're invited!.*=="
+    AND insertion NOT RLIKE '== 5 Million: We celebrate your contribution =='
+    AND insertion NOT RLIKE '==.*listed for discussion =='
+    AND insertion NOT RLIKE 'This account has been renamed as part of single-user login finalisation'
+    AND insertion NOT RLIKE 'This Month in GLAM'
+    AND insertion NOT RLIKE '== Your account will be renamed =='
+;
+
+DROP TABLE IF EXISTS user_talk_diff_no_admin_sample;
+CREATE TABLE user_talk_diff_no_admin_sample
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
+AS SELECT 
+    *
+FROM
+    enwiki.user_talk_diff_no_admin
+WHERE year > 0
+ORDER BY RAND()
+LIMIT 500000;
 
 
 DROP TABLE IF EXISTS block_events;
 CREATE TABLE block_events
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
 AS SELECT 
   REGEXP_REPLACE(REGEXP_REPLACE(log_title, '_', ' '), 'User:', '')  as user_text,
   log_comment AS reason,
@@ -243,6 +333,10 @@ WHERE
 
 DROP TABLE IF EXISTS blocked_user;
 CREATE TABLE blocked_user
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
 AS SELECT 
   REGEXP_REPLACE(REGEXP_REPLACE(log_title, '_', ' '), 'User:', '')  as user_text,
   CONCAT_WS('PIPE', COLLECT_LIST(log_comment)) as reasons,
@@ -256,20 +350,35 @@ WHERE
   AND log_action in ('block', 'reblock')
 GROUP BY log_title;
 
-DROP TABLE IF EXISTS blocked_talk_diff_no_admin;
-CREATE TABLE blocked_talk_diff_no_admin
+
+DROP TABLE IF EXISTS blocked_user_talk_diff_no_admin;
+CREATE TABLE blocked_user_talk_diff_no_admin
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
 AS SELECT
   d.*,
   reasons as block_reasons,
   timestamps block_timestamps,
   actions block_actions,
   params as block_params
-FROM talk_diff_no_admin d JOIN blocked_user u
-ON d.user_text = u.user_text;
+FROM
+  user_talk_diff_no_admin d
+JOIN
+  blocked_user u
+ON d.user_text = u.user_text
+WHERE d.year > 0;
 
+
+--out of commision
 
 DROP TABLE IF EXISTS blocked_user_talk_diff;
 CREATE TABLE blocked_user_talk_diff
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
 AS SELECT
   d.*,
   reasons as block_reasons,
@@ -279,4 +388,32 @@ AS SELECT
 FROM user_talk_diff d JOIN blocked_user u
 ON d.user_text = u.user_text;
 
+
+
+mkdir ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot
+hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/user_talk_diff_no_bot/year=2015 ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot/
+
+rsync -avz  stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/user_talk_diff_no_bot/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot/
+
+hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/user_talk_diff_no_bot_sample ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot_sample
+
+rsync -avz  stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/user_talk_diff_no_bot_sample/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot_sample/
+
+
+
+mkdir ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin
+hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/user_talk_diff_no_admin/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin/
+
+rsync -avz  stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/user_talk_diff_no_admin/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin/
+
+
+hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/user_talk_diff_no_admin_sample ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin_sample
+
+rsync -avz  stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/user_talk_diff_no_admin_sample/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin_sample/
+
+
+
+hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/blocked_user_talk_diff_no_admin ~/talk_page_abuse/wikipedia/data/blocked_user_talk_diff_no_admin
+
+rsync -avz stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/blocked_user_talk_diff_no_admin/* ~/talk_page_abuse/wikipedia/data/blocked_user_talk_diff_no_admin
 
