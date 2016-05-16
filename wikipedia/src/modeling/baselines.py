@@ -132,8 +132,37 @@ def tidy_labels(d):
     d['attack'] = d.is_harassment_or_attack.str.contains('|'.join(classes[1:])).astype(float)
     return d
 
-def load_cf_labels(filename):
-    d = pd.read_csv(filename)
-    d = d.query('_golden == False')
-    d.index = d.rev_id
-    return d
+def load_cf_data():
+    blocked = [
+                'annotated_onion_layer_5_rows_0_to_5000_raters_20',
+                'annotated_onion_layer_5_rows_0_to_10000',
+                'annotated_onion_layer_10_rows_0_to_1000',
+                'annotated_onion_layer_20_rows_0_to_1000',
+                'annotated_onion_layer_30_rows_0_to_1000'
+    ]
+
+    random = [
+                'annotated_random_data_rows_5000_to_10000',
+                'annotated_random_data_rows_0_to_5000_raters_20'
+    ]
+
+    blocked_dfs = []
+    for f in blocked:
+        d = pd.read_csv('../../data/v4_annotated/%s.csv' % f)
+        d = d.query('_golden == False')
+        d.index = d.rev_id
+        d['src'] = f
+        blocked_dfs.append(d)
+
+    random_dfs = []
+    for f in random:
+        d = pd.read_csv('../../data/v4_annotated/%s.csv' % f)
+        d = d.query('_golden == False')
+        d.index = d.rev_id
+        d['src'] = f
+        random_dfs.append(d)
+
+
+    return tidy_labels(pd.concat(blocked_dfs)), tidy_labels(pd.concat(random_dfs))
+
+

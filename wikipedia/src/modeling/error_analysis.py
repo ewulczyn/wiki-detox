@@ -1,8 +1,8 @@
 def get_scores(model, X):
     try:
-        scores = model.decision_function(X)
-    except:
         scores = model.predict_proba(X)[:, 1]
+    except:
+        scores = model.decision_function(X)
     return scores
 
 

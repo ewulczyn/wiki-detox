@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr
 
 
-from sklearn.cross_validation import train_test_split
+from sklearn.cross_validation import train_test_split, ShuffleSplit
 from sklearn.pipeline import Pipeline
 from sklearn.grid_search import GridSearchCV
 from sklearn.linear_model import LinearRegression
@@ -27,6 +27,15 @@ from sklearn import metrics, cross_validation
 from sklearn.metrics import roc_curve, auc
 from scipy import interp
 
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import (brier_score_loss, precision_score, recall_score,
+                             f1_score, roc_auc_score)
+from collections import OrderedDict
+
+
+from sklearn.metrics import (explained_variance_score, mean_absolute_error , mean_squared_error, median_absolute_error, r2_score )
+
+from sklearn.preprocessing import label_binarize
 
 def get_labeled_comments(d, labels):
     """
@@ -37,17 +46,14 @@ def get_labeled_comments(d, labels):
     c = c['clean_diff']
     c.name = 'x'
     data = pd.concat([c, labels], axis = 1)
-    return data.dropna()
 
-def split(data, test_size = 0.2,):
-    """
-    Split data into train and test
-    """
+    # shuffle
     m = data.shape[0]
     np.random.seed(seed=0)
     shuffled_indices = np.random.permutation(np.arange(m))
-    s = int(m*test_size)
-    return (data.iloc[shuffled_indices[s:]], data.iloc[shuffled_indices[:s]])
+    return data.iloc[shuffled_indices].dropna()
+
+
 
 def tune (X, y, alg, param_grid, scoring, n_jobs = 1, dev_size = 0.2, verbose = False):
     """
@@ -61,9 +67,8 @@ def tune (X, y, alg, param_grid, scoring, n_jobs = 1, dev_size = 0.2, verbose = 
     split = [(shuffled_indices[:s], shuffled_indices[s:])]
     
     # perform gridsearch
-    model = GridSearchCV(cv  = split, estimator = alg, param_grid = param_grid, scoring = scoring, n_jobs=n_jobs, refit=True)
-    model.fit(X,y)
-    
+    model = GridSearchCV(cv  = 3, estimator = alg, param_grid = param_grid, scoring = scoring, n_jobs=n_jobs, refit=True)
+    model = model.fit(X,y)
     if verbose:
         print("\nBest parameters set found:")
         best_parameters, score, _ = max(model.grid_scores_, key=lambda x: x[1])
@@ -73,26 +78,7 @@ def tune (X, y, alg, param_grid, scoring, n_jobs = 1, dev_size = 0.2, verbose = 
         for params, mean_score, scores in model.grid_scores_:
             print("%0.5f (+/-%0.05f) for %r"
                   % (mean_score, scores.std() / 2, params))
-    return model
 
-
-def evaluate(model, data, metric, plot = False):
-    """
-    Compute Spearman correlation of model on data
-    """
-    pred = model.predict(data['x'])
-    result = metric(data['y'],pred)
-    if plot:
-        sns.jointplot(data['y'].values, pred, kind="reg")
-        plt.xlabel('true score')
-        plt.ylabel('predicted score')
-    return result
-
-def tune_and_eval(data, plot = False):
-    train, test = split(data)
-    model = tune (train['x'], train['y'], reg_pipeline, param_grid, 'mean_squared_error', n_jobs=8, verbose=True)
-    metrics =  {'train': evaluate(model, train, plot = plot), 'test': evaluate(model, test)}
-    return model, metrics
 
 def eval_blended_training(pipeline, blocked, random, metric, test_size = 0.2):
     
@@ -121,25 +107,24 @@ def plot_blended_training(alphas, b, r):
     plt.ylabel('metric')
 
 
-def eval_adding_other_data(pipeline, a, b, metric, test_size = 0.2):
+def eval_adding_other_data(pipeline, a_train, a_test, b_train, metric_function, test_size = 0.2):
 
-    train, test = split(a, test_size = test_size)
     k = 10
-    step = int((b.shape[0]) / float(k))
-    ms = range(0, b.shape[0], step)
+    step = int((b_train.shape[0]) / float(k))
+    ms = range(step, b_train.shape[0]+1, step)
     metrics = []    
     for m in ms:
-        train = pd.concat([train, b[:m]])
+        train = pd.concat([a_train, b_train[:m]])
         model = pipeline.fit(train['x'].values, train['y'].values)
-        metrics.append(evaluate(model, test, metric))
+        metrics.append(metric_function(model, a_test))
     
     return ms, metrics
 
 def plot_adding_other_data(ms, metrics):
     plt.plot(ms, metrics)
     plt.legend()
-    plt.xlabel('number of example from B added for training')
-    plt.ylabel('metric on held out A data')
+    plt.xlabel('number of examples from data set B added for training')
+    plt.ylabel('metric on held out examples from data set A')
 
 
 
@@ -252,10 +237,136 @@ def ED_CLF(X_train,
     multi_class_roc(y_test, y_score)
 
 
-def multi_class_roc(y_test, y_score):
+def roc_curve_plotter(y_test, prob_pos):
+    fpr, tpr, _ = roc_curve(y_test, prob_pos)
+
+    plt.plot(fpr, tpr, label='ROC curve of class {0} (area = {1:0.2f})'
+                                   ''.format(1, auc(fpr, tpr)))
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.legend(loc="lower right")
+    plt.show()
+
+def calibration_curve_plotter(y_test, prob_pos):
+
+    brier = brier_score_loss(y_test, prob_pos, pos_label=1)
+
+    fig = plt.figure(0, figsize=(10, 10))
+    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
+    ax2 = plt.subplot2grid((3, 1), (2, 0))
+
+    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+
+    fraction_of_positives, mean_predicted_value = \
+        calibration_curve(y_test, prob_pos, n_bins=10)
+
+    ax1.plot(mean_predicted_value, fraction_of_positives, "s-",
+             label="Model: (%1.3f)" % brier)
+
+    ax2.hist(prob_pos, range=(0, 1), bins=10, label='Model',
+             histtype="step", lw=2)
+
+    ax1.set_ylabel("Fraction of positives")
+    ax1.set_ylim([-0.05, 1.05])
+    ax1.legend(loc="lower right")
+    ax1.set_title('Calibration plots  (reliability curve)')
+
+    ax2.set_xlabel("Mean predicted value")
+    ax2.set_ylabel("Count")
+    ax2.legend(loc="upper center", ncol=2)
+
+    plt.tight_layout()
+
+
+def get_binary_classifier_metrucs(y_pred, prob_pos, y_test):
+    """
+    http://scikit-learn.org/stable/auto_examples/calibration/plot_calibration_curve.html
+
+    """
+
+    scores = {
+                'precision': precision_score(y_test, y_pred),
+                'recall': recall_score(y_test, y_pred),
+                'f1': f1_score(y_test, y_pred),
+                'roc': roc_auc_score(y_test, prob_pos)
+    }
+
+    report = """
+    Precision: %(precision)1.3f
+    Recall: %(recall)1.3f
+    F1: %(f1)1.3f
+    ROC: %(roc)1.3f
+    """
+    
+    print(report % scores)
+
+        
+    return scores
+
+
+def eval_binary_classifier(model, data, calibration = True, roc = True):
+    y_pred = model.predict(data['x'])
+    prob_pos = model.predict_proba(data['x'])[:,1]
+    y_test = data['y']
+
+    if roc:
+        roc_curve_plotter(y_test, prob_pos)
+    if calibration:
+        calibration_curve_plotter(y_test, prob_pos)
+
+    return get_binary_classifier_metrucs(y_pred, prob_pos, y_test)
+
+
+def get_regression_metrics(y_test, y_pred):
+
+    scores = [
+
+                ('Explained Variance', explained_variance_score(y_test, y_pred)),
+                ('R^2', r2_score(y_test, y_pred)),
+                ('Mean squared error', mean_squared_error(y_test, y_pred)),
+                ('Mean absolute error', mean_absolute_error(y_test, y_pred)),
+                ('Median absolute error', median_absolute_error(y_test, y_pred)),
+                ('Pearson', pearsonr(y_test, y_pred)[0]),
+                ('Spearman', spearmanr(y_test, y_pred)[0]),
+    ]
+    scores = OrderedDict(scores)
+
+
+    for k, v in scores.items():
+        print ('%s: %0.3f' % (k,v))
+  
+    return scores
+
+def residual_plotter(y_test, y_pred):
+    sns.jointplot(y_test, y_pred, kind="reg")
+    plt.xlabel('true score')
+    plt.ylabel('predicted score')
+
+
+def eval_regression(model, data, plot = False):
+    """
+    Compute Spearman correlation of model on data
+    """
+    y_pred = model.predict(data['x'])
+    y_test = data['y'].values
+
+    if plot:
+        residual_plotter(y_test, y_pred)
+
+    return get_regression_metrics(y_test, y_pred)
+
+
+def multi_class_roc_plotter(y_test, y_score, plot = True):
     """
     http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html
     """
+
+    if len(y_test.shape) == 1:
+        y_test = label_binarize(y_test, sorted(list(set(y_test))))
+
 
     y = np.zeros(y_test.shape)
     y[list(range(y_test.shape[0])), y_test.argmax(axis = 1)] = 1
@@ -275,12 +386,7 @@ def multi_class_roc(y_test, y_score):
     roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
 
-
-    ##############################################################################
-    # Plot ROC curves for the multiclass problem
-
     # Compute macro-average ROC curve and ROC area
-
     # First aggregate all false positive rates
     all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
 
@@ -296,27 +402,36 @@ def multi_class_roc(y_test, y_score):
     tpr["macro"] = mean_tpr
     roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
 
-    # Plot all ROC curves
-    plt.figure()
-    plt.plot(fpr["micro"], tpr["micro"],
-             label='micro-average ROC curve (area = {0:0.2f})'
-                   ''.format(roc_auc["micro"]),
-             linewidth=2)
+    if plot:
+        # Plot all ROC curves
+        plt.figure()
+        plt.plot(fpr["micro"], tpr["micro"],
+                 label='micro-average ROC curve (area = {0:0.2f})'
+                       ''.format(roc_auc["micro"]),
+                 linewidth=2)
 
-    plt.plot(fpr["macro"], tpr["macro"],
-             label='macro-average ROC curve (area = {0:0.2f})'
-                   ''.format(roc_auc["macro"]),
-             linewidth=2)
+        plt.plot(fpr["macro"], tpr["macro"],
+                 label='macro-average ROC curve (area = {0:0.2f})'
+                       ''.format(roc_auc["macro"]),
+                 linewidth=2)
 
-    for i in range(n_classes):
-        plt.plot(fpr[i], tpr[i], label='ROC curve of class {0} (area = {1:0.2f})'
-                                       ''.format(i, roc_auc[i]))
+        for i in range(n_classes):
+            plt.plot(fpr[i], tpr[i], label='ROC curve of class {0} (area = {1:0.2f})'
+                                           ''.format(i, roc_auc[i]))
 
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Some extension of Receiver operating characteristic to multi-class')
-    plt.legend(loc="lower right")
-    plt.show()
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Some extension of Receiver operating characteristic to multi-class')
+        plt.legend(loc="lower right")
+        plt.show()
+    return roc_auc
+
+
+def eval_multiclass_classifier(model, data):
+    y_score = model.predict_proba(data['x'])
+    y_test = data['y'].values
+
+    return multi_class_roc_plotter(y_test, y_score, plot = True)
