@@ -136,14 +136,15 @@ def load_cf_data():
     blocked = [
                 'annotated_onion_layer_5_rows_0_to_5000_raters_20',
                 'annotated_onion_layer_5_rows_0_to_10000',
+                'annotated_onion_layer_5_rows_10000_to_50526_raters_10',
                 'annotated_onion_layer_10_rows_0_to_1000',
                 'annotated_onion_layer_20_rows_0_to_1000',
-                'annotated_onion_layer_30_rows_0_to_1000'
+                'annotated_onion_layer_30_rows_0_to_1000',
     ]
 
     random = [
                 'annotated_random_data_rows_5000_to_10000',
-                'annotated_random_data_rows_0_to_5000_raters_20'
+                'annotated_random_data_rows_0_to_5000_raters_20',
     ]
 
     blocked_dfs = []

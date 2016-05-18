@@ -37,6 +37,8 @@ from sklearn.metrics import (explained_variance_score, mean_absolute_error , mea
 
 from sklearn.preprocessing import label_binarize
 
+from pprint import pprint
+
 def get_labeled_comments(d, labels):
     """
     Get comments corresponding to rev_id labels
@@ -173,6 +175,15 @@ def ED_CLF(X_train,
           display_step = 5,
          ):
 
+    y_test_binary = np.zeros(y_test.shape)
+    y_test_binary[list(range(y_test.shape[0])), y_test.argmax(axis = 1)] = 1
+
+    y_train_binary = np.zeros(y_train.shape)
+    y_train_binary[list(range(y_train.shape[0])), y_train.argmax(axis = 1)] = 1
+
+
+
+
     n_input = X_train.shape[1]
     n_classes = y_train.shape[1]
 
@@ -207,6 +218,8 @@ def ED_CLF(X_train,
     sess = tf.Session()
     sess.run(init)
 
+    batch = 0
+
     # Training cycle
     for epoch in range(training_epochs):
         avg_cost = 0.
@@ -220,21 +233,30 @@ def ED_CLF(X_train,
             sess.run(optimizer, feed_dict={x: batch_xs, y: batch_ys})
             # Compute average loss
             avg_cost += sess.run(cost, feed_dict={x: batch_xs, y: batch_ys}) * batch_m
-        # Display logs per epoch step
-        if epoch % display_step == 0:
-            print ("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost/m))
+            # Display logs per epoch step
+            if batch % display_step == 0:
+                print ("Batch:", '%04d' % (batch+1), "cost=", "{:.9f}".format(avg_cost/m))
 
-            correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-            print ("Train Accuracy:", accuracy.eval({x: X_train.toarray(), y: y_train}, session=sess))
-            print ("Test Accuracy:", accuracy.eval({x: X_test.toarray(), y: y_test}, session=sess)) 
+                #correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+                #accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+                #print ("Train Accuracy:", accuracy.eval({x: X_train.toarray(), y: y_train}, session=sess))
+                #print ("Test Accuracy:", accuracy.eval({x: X_test.toarray(), y: y_test}, session=sess)) 
+                y_test_score = np.array(pred.eval({x: X_test.toarray()}, session=sess))
+                y_train_score = np.array(pred.eval({x: X_train.toarray()}, session=sess))
+
+                print ("Train ROC:", roc_auc_score(y_train_binary.ravel(), y_train_score.ravel()))
+                print ("Test ROC:", roc_auc_score(y_test_binary.ravel(), y_test_score.ravel()))
+
+
+
+            batch+=1
 
             
             
 
     print ("Optimization Finished!")
     y_score = np.array(pred.eval({x: X_test.toarray()}, session=sess))
-    multi_class_roc(y_test, y_score)
+    multi_class_roc_plotter(y_test, y_score)
 
 
 def roc_curve_plotter(y_test, prob_pos):
@@ -281,34 +303,49 @@ def calibration_curve_plotter(y_test, prob_pos):
     plt.tight_layout()
 
 
-def get_binary_classifier_metrucs(y_pred, prob_pos, y_test):
+def get_binary_classifier_metrics(prob_pos, y_test):
     """
     http://scikit-learn.org/stable/auto_examples/calibration/plot_calibration_curve.html
 
     """
 
+    ts = [np.percentile(prob_pos, p) for p in np.arange(0, 101, 1)]
+    f1s = []
+    ps = []
+    rs = []
+
+    for t in ts:
+        y_pred_t = prob_pos >=t
+        f1s.append(f1_score(y_test, y_pred_t))
+        ps.append(precision_score(y_test, y_pred_t))
+        rs.append(recall_score(y_test, y_pred_t))
+
+    """
+    plt.plot(ts, f1s, label = 'F1')
+    plt.plot(ts, ps, label = 'precision')
+    plt.plot(ts, rs, label = 'recal')
+    plt.legend()
+    """
+
+    ix = np.argmax(f1s)
+
+
     scores = {
-                'precision': precision_score(y_test, y_pred),
-                'recall': recall_score(y_test, y_pred),
-                'f1': f1_score(y_test, y_pred),
+                'optimal F1': f1s[ix],
+                'precision @ optimal F1': rs[ix],
+                'recall @ optimal F1': rs[ix],
                 'roc': roc_auc_score(y_test, prob_pos)
     }
 
-    report = """
-    Precision: %(precision)1.3f
-    Recall: %(recall)1.3f
-    F1: %(f1)1.3f
-    ROC: %(roc)1.3f
-    """
     
-    print(report % scores)
+    print('threshold @ optimal F1:', ts[ix])
+    pprint({k: '%0.3f' % v for k,v in scores.items()})
 
         
     return scores
 
 
 def eval_binary_classifier(model, data, calibration = True, roc = True):
-    y_pred = model.predict(data['x'])
     prob_pos = model.predict_proba(data['x'])[:,1]
     y_test = data['y']
 
@@ -317,7 +354,7 @@ def eval_binary_classifier(model, data, calibration = True, roc = True):
     if calibration:
         calibration_curve_plotter(y_test, prob_pos)
 
-    return get_binary_classifier_metrucs(y_pred, prob_pos, y_test)
+    return get_binary_classifier_metrics(prob_pos, y_test)
 
 
 def get_regression_metrics(y_test, y_pred):

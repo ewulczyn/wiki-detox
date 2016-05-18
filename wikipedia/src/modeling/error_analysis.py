@@ -32,6 +32,8 @@ def print_clf_errors(d, n=10, boundary = False):
         print('SCORES: Actual: %d, Predicted: %d, Score: %0.2f' % (row['y'], row['prediction'], row['score']))
         print('\n')
 
+        
+
 
 def get_reg_residuals(model, data):
     """
