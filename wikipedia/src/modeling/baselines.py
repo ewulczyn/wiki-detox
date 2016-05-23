@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.stats import pearsonr
 from sklearn.metrics import accuracy_score
 from scipy.stats import entropy as kl
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, f1_score
 
 
 
@@ -60,7 +60,7 @@ def get_baseline_matrix(labels, k, agg_function, eval_function):
                     dis.append(g[0:i])
                     djs.append(g[i:(i+j)])
                 else:
-                    print(i,j, g, "WARNING: Comment had less than k lablels")
+                    print(i,j, g, "WARNING: Comment had less than k labels")
 
             di =  pd.concat(dis)
             dj = pd.concat(djs)
@@ -117,6 +117,23 @@ def roc_auc(pred, true):
     true = (true > 0.5).astype(float)
     return roc_auc_score(true, pred)
 
+def optimal_f1(pred, true, step = 1):
+    binary_true = (true > 0.5).astype(float)
+    ts = [np.percentile(pred, p) for p in np.arange(0, 101, step)]
+    f1s = []
+    for t in ts:
+        y_pred_t = pred >= t
+        f1 = f1_score(binary_true, y_pred_t)
+        # Note F1 should have a parabolic shape, so no need to continue when the score starts falling
+        if len(f1s) > 0 and f1 < f1s[-1] :
+            return f1s[-1]
+        else:
+            f1s.append(f1)
+
+    return f1s[-1]
+
+
+
 def cross_entropy(x, y):
     logy =  np.log(y)
     logy[np.isinf(logy)] = 0
@@ -134,12 +151,13 @@ def tidy_labels(d):
 
 def load_cf_data():
     blocked = [
-                'annotated_onion_layer_5_rows_0_to_5000_raters_20',
-                'annotated_onion_layer_5_rows_0_to_10000',
-                'annotated_onion_layer_5_rows_10000_to_50526_raters_10',
-                'annotated_onion_layer_10_rows_0_to_1000',
-                'annotated_onion_layer_20_rows_0_to_1000',
-                'annotated_onion_layer_30_rows_0_to_1000',
+                'annotated_onion_layer_5_rows_0_to_10000',              #annotated 7 times
+                'annotated_layer_5_rows_0_to_10000_raters_3',           #annotated 3 times
+                'annotated_onion_layer_5_rows_0_to_5000_raters_20',     #annotated 20 times
+                'annotated_onion_layer_5_rows_10000_to_50526_raters_10',#annotated 10 times
+                'annotated_onion_layer_10_rows_0_to_1000',              #annotated ? times
+                'annotated_onion_layer_20_rows_0_to_1000',              #annotated ? times
+                'annotated_onion_layer_30_rows_0_to_1000',              #annotated ? times
     ]
 
     random = [

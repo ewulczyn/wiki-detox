@@ -181,6 +181,8 @@ def ED_CLF(X_train,
     y_train_binary = np.zeros(y_train.shape)
     y_train_binary[list(range(y_train.shape[0])), y_train.argmax(axis = 1)] = 1
 
+    y_test_mean = y_test.dot(np.arange(y_test.shape[1]))
+
 
 
 
@@ -241,11 +243,15 @@ def ED_CLF(X_train,
                 #accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
                 #print ("Train Accuracy:", accuracy.eval({x: X_train.toarray(), y: y_train}, session=sess))
                 #print ("Test Accuracy:", accuracy.eval({x: X_test.toarray(), y: y_test}, session=sess)) 
-                y_test_score = np.array(pred.eval({x: X_test.toarray()}, session=sess))
-                y_train_score = np.array(pred.eval({x: X_train.toarray()}, session=sess))
+                y_test_pred = np.array(pred.eval({x: X_test.toarray()}, session=sess))
+                y_train_pred = np.array(pred.eval({x: X_train.toarray()}, session=sess))
 
-                print ("Train ROC:", roc_auc_score(y_train_binary.ravel(), y_train_score.ravel()))
-                print ("Test ROC:", roc_auc_score(y_test_binary.ravel(), y_test_score.ravel()))
+                print ("Train ROC:", roc_auc_score(y_train_binary.ravel(), y_train_pred.ravel()))
+                print ("Test ROC:", roc_auc_score(y_test_binary.ravel(), y_test_pred.ravel()))
+
+                y_test_pred_mean = y_test_pred.dot(np.arange(y_test_pred.shape[1]))
+                print('Test Pearson Correlation: ', pearsonr(y_test_pred_mean, y_test_mean)[0])
+                print('Test Spearman Correlation: ', spearmanr(y_test_pred_mean, y_test_mean)[0])
 
 
 
@@ -255,8 +261,10 @@ def ED_CLF(X_train,
             
 
     print ("Optimization Finished!")
-    y_score = np.array(pred.eval({x: X_test.toarray()}, session=sess))
-    multi_class_roc_plotter(y_test, y_score)
+    
+
+    y_test_pred = np.array(pred.eval({x: X_test.toarray()}, session=sess))
+    multi_class_roc_plotter(y_test, y_test_pred)
 
 
 def roc_curve_plotter(y_test, prob_pos):
@@ -272,7 +280,7 @@ def roc_curve_plotter(y_test, prob_pos):
     plt.legend(loc="lower right")
     plt.show()
 
-def calibration_curve_plotter(y_test, prob_pos):
+def calibration_curve_plotter(y_test, prob_pos, n_bins = 10):
 
     brier = brier_score_loss(y_test, prob_pos, pos_label=1)
 
@@ -280,25 +288,47 @@ def calibration_curve_plotter(y_test, prob_pos):
     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
     ax2 = plt.subplot2grid((3, 1), (2, 0))
 
-    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+    
 
+    """
     fraction_of_positives, mean_predicted_value = \
         calibration_curve(y_test, prob_pos, n_bins=10)
-
     ax1.plot(mean_predicted_value, fraction_of_positives, "s-",
              label="Model: (%1.3f)" % brier)
+    """
+
+    
+    df = pd.DataFrame({'true': y_test})
+    bins = np.linspace(0., 1. , n_bins + 1) 
+    binids = np.digitize(prob_pos, bins) - 1
+    df['Bin center'] = bins[binids] + .5/n_bins
+    df[''] = 'Model calibration: (%1.3f)' % brier
+    o = bins + .5/n_bins
+
+    df2 = pd.DataFrame({'true': o, 'Bin center': o})
+    df2[''] = 'Perfect calibration'
+
+    df = pd.concat([df, df2])
+
+    
+    sns.pointplot(x='Bin center', y = 'true', data = df, order = o, hue = '', ax = ax1)
+
+
+    #ax1.plot(o, o, "k:", label="Perfectly calibrated")
+    #sns.regplot(x = o, y = o, ax = ax1)
+
+    
 
     ax2.hist(prob_pos, range=(0, 1), bins=10, label='Model',
              histtype="step", lw=2)
 
     ax1.set_ylabel("Fraction of positives")
     ax1.set_ylim([-0.05, 1.05])
-    ax1.legend(loc="lower right")
-    ax1.set_title('Calibration plots  (reliability curve)')
+    #ax1.legend(loc="lower right")
+    ax1.set_title('Calibration plots')
 
-    ax2.set_xlabel("Mean predicted value")
+    ax2.set_xlabel("Predicted Probability")
     ax2.set_ylabel("Count")
-    ax2.legend(loc="upper center", ncol=2)
 
     plt.tight_layout()
 
