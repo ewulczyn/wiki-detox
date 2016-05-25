@@ -358,13 +358,17 @@ def get_binary_classifier_metrics(prob_pos, y_test):
     """
 
     ix = np.argmax(f1s)
+    
+    num_correct = (np.array(prob_pos >= 0.5) == np.array(y_test))
+    accuracy = np.mean(num_correct)
 
 
     scores = {
                 'optimal F1': f1s[ix],
                 'precision @ optimal F1': rs[ix],
                 'recall @ optimal F1': rs[ix],
-                'roc': roc_auc_score(y_test, prob_pos)
+                'roc': roc_auc_score(y_test, prob_pos),
+                'accuracy': accuracy
     }
 
     
