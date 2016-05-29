@@ -173,21 +173,26 @@ def ED_CLF(X_train,
           training_epochs = 60,
           batch_size = 200,
           display_step = 5,
+          one_hot = False
          ):
-
-    y_test_binary = np.zeros(y_test.shape)
-    y_test_binary[list(range(y_test.shape[0])), y_test.argmax(axis = 1)] = 1
-
-    y_train_binary = np.zeros(y_train.shape)
-    y_train_binary[list(range(y_train.shape[0])), y_train.argmax(axis = 1)] = 1
-
-    y_test_mean = y_test.dot(np.arange(y_test.shape[1]))
-
-
-
 
     n_input = X_train.shape[1]
     n_classes = y_train.shape[1]
+
+
+    y_train_binary = np.zeros(y_train.shape)
+    y_train_binary[list(range(y_train.shape[0])), y_train.argmax(axis = 1)] = 1
+    y_train_mean = y_train.dot(np.arange(n_classes))
+
+    y_test_binary = np.zeros(y_test.shape)
+    y_test_binary[list(range(y_test.shape[0])), y_test.argmax(axis = 1)] = 1
+    y_test_mean = y_test.dot(np.arange(n_classes))
+
+
+    if one_hot:
+        labels = y_train_binary
+    else:
+        labels = y_train
 
     # tf Graph input
     x = tf.placeholder("float", [None, n_input])
@@ -226,7 +231,7 @@ def ED_CLF(X_train,
     for epoch in range(training_epochs):
         avg_cost = 0.
         m = 0
-        batches = batch_iter(X_train.toarray(), y_train, batch_size)
+        batches = batch_iter(X_train.toarray(), labels, batch_size)
         # Loop over all batches
         for batch_xs, batch_ys in batches:
             batch_m = len(batch_ys)
@@ -239,19 +244,28 @@ def ED_CLF(X_train,
             if batch % display_step == 0:
                 print ("Batch:", '%04d' % (batch+1), "cost=", "{:.9f}".format(avg_cost/m))
 
-                #correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-                #accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-                #print ("Train Accuracy:", accuracy.eval({x: X_train.toarray(), y: y_train}, session=sess))
-                #print ("Test Accuracy:", accuracy.eval({x: X_test.toarray(), y: y_test}, session=sess)) 
                 y_test_pred = np.array(pred.eval({x: X_test.toarray()}, session=sess))
                 y_train_pred = np.array(pred.eval({x: X_train.toarray()}, session=sess))
 
-                print ("Train ROC:", roc_auc_score(y_train_binary.ravel(), y_train_pred.ravel()))
-                print ("Test ROC:", roc_auc_score(y_test_binary.ravel(), y_test_pred.ravel()))
+                print ("\n\tTrain Micro ROC:", roc_auc_score(y_train_binary.ravel(), y_train_pred.ravel()))
+                print ("\tTest Micro ROC:", roc_auc_score(y_test_binary.ravel(), y_test_pred.ravel()))
 
-                y_test_pred_mean = y_test_pred.dot(np.arange(y_test_pred.shape[1]))
-                print('Test Pearson Correlation: ', pearsonr(y_test_pred_mean, y_test_mean)[0])
-                print('Test Spearman Correlation: ', spearmanr(y_test_pred_mean, y_test_mean)[0])
+
+                print ("\n\tTrain Micro F1:", f1_score(y_train_binary.argmax(axis =1), y_train_pred.argmax(axis =1), average = 'micro'))
+                print ("\tTest Micro F1:", f1_score(y_test_binary.argmax(axis =1), y_test_pred.argmax(axis =1), average = 'micro'))
+
+                print ("\n\tTrain Macro F1:", f1_score(y_train_binary.argmax(axis =1), y_train_pred.argmax(axis =1), average = 'macro'))
+                print ("\tTest Macro F1:", f1_score(y_test_binary.argmax(axis =1), y_test_pred.argmax(axis =1), average = 'macro'))
+
+
+                y_test_pred_mean = y_test_pred.dot(np.arange(n_classes))
+                y_train_pred_mean = y_train_pred.dot(np.arange(n_classes))
+                print('\n\tTrain Pearson Correlation: ', pearsonr(y_train_pred_mean, y_train_mean)[0])
+                print('\tTest Pearson Correlation: ', pearsonr(y_test_pred_mean, y_test_mean)[0])
+
+                print('\n\tTrain Spearman Correlation: ', spearmanr(y_train_pred_mean, y_train_mean)[0])
+                print('\tTest Spearman Correlation: ', spearmanr(y_test_pred_mean, y_test_mean)[0])
+                print('\n')
 
 
 
@@ -264,13 +278,13 @@ def ED_CLF(X_train,
     
 
     y_test_pred = np.array(pred.eval({x: X_test.toarray()}, session=sess))
-    multi_class_roc_plotter(y_test, y_test_pred)
+    multi_class_roc_plotter(y_test_binary, y_test_pred)
 
 
 def roc_curve_plotter(y_test, prob_pos):
     fpr, tpr, _ = roc_curve(y_test, prob_pos)
 
-    plt.plot(fpr, tpr, label='ROC curve of class {0} (area = {1:0.2f})'
+    plt.plot(fpr, tpr, label='ROC curve of class {0} (area = {1:0.3f})'
                                    ''.format(1, auc(fpr, tpr)))
     plt.plot([0, 1], [0, 1], 'k--')
     plt.xlim([0.0, 1.0])
@@ -491,7 +505,6 @@ def multi_class_roc_plotter(y_test, y_score, plot = True):
         plt.ylim([0.0, 1.05])
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
-        plt.title('Some extension of Receiver operating characteristic to multi-class')
         plt.legend(loc="lower right")
         plt.show()
     return roc_auc

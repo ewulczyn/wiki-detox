@@ -161,8 +161,10 @@ def load_cf_data():
     ]
 
     random = [
-                'annotated_random_data_rows_5000_to_10000',
                 'annotated_random_data_rows_0_to_5000_raters_20',
+                'annotated_random_data_rows_5000_to_10000',
+                'annotated_random_data_rows_5000_to_10000_raters_3',
+                'annotated_random_data_rows_10000_to_20000_raters_10',
     ]
 
     blocked_dfs = []
