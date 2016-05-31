@@ -1,3 +1,4 @@
 {
-    "insult": "../kaggle/models/kaggle_ngram.pkl"
+    "insult": "../wikipedia/models/recipient_ngram.pkl",
+    "aggression": "../wikipedia/models/aggression_regression_ngram.pkl"
 }

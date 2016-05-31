@@ -36,8 +36,11 @@ from collections import OrderedDict
 from sklearn.metrics import (explained_variance_score, mean_absolute_error , mean_squared_error, median_absolute_error, r2_score )
 
 from sklearn.preprocessing import label_binarize
-
+from math import sqrt
 from pprint import pprint
+
+from baselines import rmse
+
 
 def get_labeled_comments(d, labels):
     """
@@ -109,11 +112,18 @@ def plot_blended_training(alphas, b, r):
     plt.ylabel('metric')
 
 
-def eval_adding_other_data(pipeline, a_train, a_test, b_train, metric_function, test_size = 0.2):
+def eval_adding_other_data(pipeline, a_train, a_test, b_train, metric_function):
 
-    k = 10
+    k = 4
     step = int((b_train.shape[0]) / float(k))
-    ms = range(step, b_train.shape[0]+1, step)
+
+    if a_train is None or a_train.empty:
+        ms = range(step, b_train.shape[0]+1, step)
+    else:
+        ms = range(0,b_train.shape[0]+1, step)
+
+
+    
     metrics = []    
     for m in ms:
         train = pd.concat([a_train, b_train[:m]])
@@ -162,10 +172,26 @@ def batch_iter(X, y, batch_size):
         yield shuffled_X[start_index:end_index], shuffled_y[start_index:end_index]
 
 
+def get_encoder(X, architecture):
+    n_layers = len(architecture)-1
+    a = X
+    weights = {}
+    biases = {}
+
+    for i in range(n_layers):
+        m = architecture[i]
+        n = architecture[i+1]
+        weights[i] = tf.Variable(tf.random_normal([m, n]))
+        biases[i] = tf.Variable(tf.random_normal([n]))
+
+    for i in range(n_layers):
+        a = tf.nn.relu(tf.add(tf.matmul(a, weights[i]), biases[i]))
+
+    return weights, biases, a
 
 
 
-def ED_CLF(X_train,
+def NN_REG(X_train,
           y_train,
           X_test,
           y_test,
@@ -173,11 +199,95 @@ def ED_CLF(X_train,
           training_epochs = 60,
           batch_size = 200,
           display_step = 5,
-          one_hot = False
+          architecture = []):
+
+    n_input = X_train.shape[1]
+    architecture = [n_input] + architecture 
+
+    # tf Graph input
+    x = tf.placeholder("float", [None, n_input])
+    y = tf.placeholder("float", [None, 1])
+
+    weights, biases, features = get_encoder(x, architecture)
+
+    # output layer
+    W = tf.Variable(tf.random_normal([architecture[-1], 1]))
+    b = tf.Variable(tf.random_normal([1]))
+    weights['out'] = W
+    biases['out'] = b
+    pred = tf.add(tf.matmul(features, W), b)
+
+
+    # Define loss and optimizer
+    cost = tf.reduce_mean(tf.square(tf.sub(pred, y))) # MSE
+    # Regularization
+    for k,v in weights.items():
+        cost += 5e-4 * tf.nn.l2_loss(v) 
+
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost) # Adam Optimizer
+
+    # Initializing the variables
+    init = tf.initialize_all_variables()
+
+    # Launch the graph
+    sess = tf.Session()
+    sess.run(init)
+
+    batch = 0
+
+    # Training cycle
+    for epoch in range(training_epochs):
+        avg_cost = 0.
+        m = 0
+        batches = batch_iter(X_train.toarray(), y_train, batch_size)
+        # Loop over all batches
+        for batch_xs, batch_ys in batches:
+            batch_m = len(batch_ys)
+            m += batch_m
+            # Fit training using batch data
+            sess.run(optimizer, feed_dict={x: batch_xs, y: batch_ys})
+            # Compute average loss
+            avg_cost += sess.run(cost, feed_dict={x: batch_xs, y: batch_ys}) * batch_m
+            # Display logs per epoch step
+            if batch % display_step == 0:
+                print ("Batch:", '%04d' % (batch+1), "cost=", "{:.9f}".format(avg_cost/m))
+
+                y_test_pred = np.array(pred.eval({x: X_test.toarray()}, session=sess))
+                y_train_pred = np.array(pred.eval({x: X_train.toarray()}, session=sess))
+
+                print('\n\tTrain RMSE: ', rmse(y_train_pred, y_train))
+                print('\tTest RMSE: ', rmse(y_test_pred, y_test))
+
+                print('\n\tTrain R^2: ', r2_score(y_train_pred, y_train))
+                print('\tTest R^2: ', r2_score(y_test_pred, y_test))
+
+
+                #print('\n\tTrain Pearson Correlation: ', pearsonr(y_train_pred, y_train)[0])
+                #print('\tTest Pearson Correlation: ', pearsonr(y_test_pred, y_test)[0])
+
+                #print('\n\tTrain Spearman Correlation: ', spearmanr(y_train_pred, y_train)[0])
+                #print('\tTest Spearman Correlation: ', spearmanr(y_test_pred, y_test)[0])
+                print('\n')
+
+            batch+=1
+    print ("Optimization Finished!")
+
+
+def NN_CLF(X_train,
+          y_train,
+          X_test,
+          y_test,
+          learning_rate = 0.001,
+          training_epochs = 60,
+          batch_size = 200,
+          display_step = 5,
+          one_hot = False,
+          architecture = []
          ):
 
     n_input = X_train.shape[1]
     n_classes = y_train.shape[1]
+    architecture = [n_input] + architecture
 
 
     y_train_binary = np.zeros(y_train.shape)
@@ -198,24 +308,25 @@ def ED_CLF(X_train,
     x = tf.placeholder("float", [None, n_input])
     y = tf.placeholder("float", [None, n_classes])
 
-    # Create model
-    def LG(_X, _weights, _biases):
-        return tf.matmul(_X, _weights['out']) + _biases['out']
+    
+    weights, biases, features = get_encoder(x, architecture)
 
-    # Store layers weight & bias
-    weights = {
-        'out': tf.Variable(tf.random_normal([n_input, n_classes]))
-    }
-    biases = {
-        'out': tf.Variable(tf.random_normal([n_classes]))
-    }
+    # output layer
+    W = tf.Variable(tf.random_normal([architecture[-1], n_classes]))
+    b = tf.Variable(tf.random_normal([n_classes]))
+    weights['out'] = W
+    biases['out'] = b
+    logits = tf.add(tf.matmul(features, W), b)
+    pred = tf.nn.softmax(logits)
 
-    # Construct model
-    pred = LG(x, weights, biases)
 
     # Define loss and optimizer
-    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(pred, y)) # Softmax loss
-    cost += 5e-4 * tf.nn.l2_loss(weights['out']) # Regularization
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, y)) # Softmax loss
+
+    # Regularization
+    for k,v in weights.items():
+        cost += 5e-4 * tf.nn.l2_loss(v) 
+
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost) # Adam Optimizer
 
     # Initializing the variables
@@ -265,7 +376,14 @@ def ED_CLF(X_train,
 
                 print('\n\tTrain Spearman Correlation: ', spearmanr(y_train_pred_mean, y_train_mean)[0])
                 print('\tTest Spearman Correlation: ', spearmanr(y_test_pred_mean, y_test_mean)[0])
+
+                print('\n\tTrain RMSE: ', rmse(y_train_pred_mean, y_train_mean))
+                print('\tTest RMSE: ', rmse(y_test_pred_mean, y_test_mean))
+
+                print('\n\tTrain R^2: ', r2_score(y_train_pred_mean, y_train_mean))
+                print('\tTest R^2: ', r2_score(y_test_pred_mean, y_test_mean))
                 print('\n')
+
 
 
 
@@ -404,10 +522,8 @@ def eval_binary_classifier(model, data, calibration = True, roc = True):
 def get_regression_metrics(y_test, y_pred):
 
     scores = [
-
-                ('Explained Variance', explained_variance_score(y_test, y_pred)),
                 ('R^2', r2_score(y_test, y_pred)),
-                ('Mean squared error', mean_squared_error(y_test, y_pred)),
+                ('RMSE', rmse(y_test, y_pred)),
                 ('Mean absolute error', mean_absolute_error(y_test, y_pred)),
                 ('Median absolute error', median_absolute_error(y_test, y_pred)),
                 ('Pearson', pearsonr(y_test, y_pred)[0]),
@@ -487,17 +603,17 @@ def multi_class_roc_plotter(y_test, y_score, plot = True):
         # Plot all ROC curves
         plt.figure()
         plt.plot(fpr["micro"], tpr["micro"],
-                 label='micro-average ROC curve (area = {0:0.2f})'
+                 label='micro-average ROC curve (area = {0:0.3f})'
                        ''.format(roc_auc["micro"]),
                  linewidth=2)
 
         plt.plot(fpr["macro"], tpr["macro"],
-                 label='macro-average ROC curve (area = {0:0.2f})'
+                 label='macro-average ROC curve (area = {0:0.3f})'
                        ''.format(roc_auc["macro"]),
                  linewidth=2)
 
         for i in range(n_classes):
-            plt.plot(fpr[i], tpr[i], label='ROC curve of class {0} (area = {1:0.2f})'
+            plt.plot(fpr[i], tpr[i], label='ROC curve of class {0} (area = {1:0.3f})'
                                            ''.format(i, roc_auc[i]))
 
         plt.plot([0, 1], [0, 1], 'k--')

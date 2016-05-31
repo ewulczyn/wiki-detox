@@ -1,10 +1,9 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import pearsonr
-from sklearn.metrics import accuracy_score
+from scipy.stats import pearsonr,spearmanr
 from scipy.stats import entropy as kl
-from sklearn.metrics import roc_auc_score, f1_score
-
+from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, mean_squared_error, r2_score
+from math import sqrt
 
 
 def get_baseline_matrix(labels, k, agg_function, eval_function):
@@ -112,6 +111,14 @@ def empirical_dist(l, w = 0.5, index = None):
 
 def pearson(x,y):
     return pearsonr(x,y)[0]
+
+def spearman(x,y):
+    return spearmanr(x,y)[0]
+
+def rmse(x,y):
+    return sqrt(mean_squared_error(x, y))
+
+
 
 def roc_auc(pred, true):
     true = (true > 0.5).astype(float)
