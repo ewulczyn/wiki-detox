@@ -159,7 +159,7 @@ def tidy_labels(d):
 def load_cf_data():
     blocked = [
                 'annotated_onion_layer_5_rows_0_to_10000',              #annotated 7 times
-                'annotated_layer_5_rows_0_to_10000_raters_3',           #annotated 3 times
+                'annotated_onion_layer_5_rows_0_to_10000_raters_3',           #annotated 3 times
                 'annotated_onion_layer_5_rows_0_to_5000_raters_20',     #annotated 20 times
                 'annotated_onion_layer_5_rows_10000_to_50526_raters_10',#annotated 10 times
                 'annotated_onion_layer_10_rows_0_to_1000',              #annotated ? times
