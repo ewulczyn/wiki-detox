@@ -22,6 +22,8 @@ nice python ~/mwdiffs_to_tsv.py \
 def clean(s):
     s = s.replace('\t', 'TAB')
     s = s.replace('\n', 'NEWLINE')
+    s = s.replace("'", 'SQ ')
+    s = s.replace("""""", 'DQ ')
     return s
 
 def get_features(obj):

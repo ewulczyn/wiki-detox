@@ -1,122 +1,3 @@
-sqoop import                                                      \
-  --connect jdbc:mysql://analytics-store.eqiad.wmnet/enwiki      \
-  --verbose                                                         \
-  --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_2XXXXX)      \
-  --delete-target-dir                                               \
-  --username research                                               \
-  --password-file /user/ellery/sqoop.password                       \
-  --split-by rev_parent_id                                              \
-  --hive-import                                                     \
-  --hive-database enwiki                                        \
-  --create-hive-table                                               \
-  --hive-table revision                                          \
-  --hive-delims-replacement ' '                                  \
-  --query '
-SELECT
-  rev_id,
-  rev_page,
-  rev_text_id,
-  CAST(rev_comment AS CHAR(255) CHARSET utf8) AS rev_comment,
-  rev_user,
-  CAST(rev_user_text AS CHAR(255) CHARSET utf8) AS rev_user_text,
-  CAST(rev_timestamp AS CHAR(14) CHARSET utf8) AS rev_timestamp,
-  rev_minor_edit,
-  rev_deleted,
-  rev_len,
-  rev_parent_id
-FROM revision
-WHERE $CONDITIONS '
-
-
-
-sqoop import                                                        \
-  --connect jdbc:mysql://analytics-store.eqiad.wmnet/enwiki    \
-  --verbose                                                         \
-  --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
-  --delete-target-dir                                               \
-  --username research                                               \
-  --password-file /user/ellery/sqoop.password                       \
-  --split-by a.page_id                                              \
-  --hive-import                                                     \
-  --hive-database enwiki                                      \
-  --create-hive-table                                               \
-  --hive-table page                                   \
-  --hive-delims-replacement ' '                                  \
-  --query '
-SELECT
-  a.page_id,
-  a.page_namespace,
-  CAST(a.page_title AS CHAR(255) CHARSET utf8) AS page_title
-FROM page a
-WHERE $CONDITIONS
-'  
-
-
-sqoop import                                                        \
-  --connect jdbc:mysql://analytics-store.eqiad.wmnet/enwiki    \
-  --verbose                                                         \
-  --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
-  --delete-target-dir                                               \
-  --username research                                               \
-  --password-file /user/ellery/sqoop.password                       \
-  --split-by a.user_id                                              \
-  --hive-import                                                     \
-  --hive-database enwiki                                      \
-  --create-hive-table                                               \
-  --hive-table user                                                 \
-  --hive-delims-replacement ' '                                  \
-  --query '
-SELECT
-  a.user_id AS user_id,
-  CAST(a.user_name AS CHAR(255) CHARSET utf8) AS user_name,
-  CAST(a.user_registration AS CHAR(14) CHARSET utf8) AS user_registration
-FROM user a
-WHERE $CONDITIONS
-'  
-
-
-sqoop import                                                        \
-  --connect jdbc:mysql://analytics-store.eqiad.wmnet/enwiki    \
-  --verbose                                                         \
-  --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
-  --delete-target-dir                                               \
-  --username research                                               \
-  --password-file /user/ellery/sqoop.password                       \
-  --split-by a.log_id                                              \
-  --hive-import                                                     \
-  --hive-database enwiki                                      \
-  --create-hive-table                                               \
-  --hive-table logging                                            \
-  --hive-delims-replacement ' '                                  \
-  --query '
-SELECT
-  a.log_id,
-  CAST(a.log_comment AS CHAR(255) CHARSET utf8) AS log_comment,
-  CAST(DATE_FORMAT(STR_TO_DATE(a.log_timestamp, "%Y%m%d%H%i%S"), "%Y-%m-%dT%H:%i:%SZ") AS CHAR(22) CHARSET utf8) AS log_timestamp,
-  CAST(a.log_params AS CHAR(255) CHARSET utf8) AS log_params,
-  CAST(a.log_title AS CHAR(255) CHARSET utf8) AS log_title,
-  CAST(a.log_action AS CHAR(32) CHARSET utf8) AS log_action,
-  CAST(a.log_type AS CHAR(32) CHARSET utf8) AS log_type
-FROM logging a
-WHERE $CONDITIONS
-'
-
-CREATE TABLE user_talk_revision
-ROW FORMAT
-DELIMITED FIELDS TERMINATED BY '\t'
-LINES TERMINATED BY '\n' 
-STORED AS TEXTFILE AS
-SELECT
-  *
-FROM
-  page,
-  revision
-WHERE
-  page.page_id = revision.rev_page
-  AND page_namespace = 3;
-
-
-
 DROP TABLE If EXISTS user_talk_diff_external;
 CREATE EXTERNAL TABLE user_talk_diff_external (
     rev_comment STRING,
@@ -163,38 +44,44 @@ SET mapreduce.input.fileinputformat.split.minsize=100000000;
 SET hive.exec.max.dynamic.partitions.pernode=250;
 SET hive.exec.dynamic.partition.mode=nonstrict;
 
-DROP TABLE If EXISTS user_talk_diff;
-CREATE TABLE user_talk_diff 
+
+DROP TABLE IF EXISTS talk_diff;
+CREATE EXTERNAL TABLE talk_diff (
+    rev_comment STRING,
+    insertion STRING,
+    insert_only STRING,
+    rev_id STRING,
+    page_id STRING,
+    page_title STRING,
+    rev_timestamp STRING,
+    user_id STRING,
+    user_text STRING
+)
+PARTITIONED BY (ns STRING, year STRING)
 ROW FORMAT DELIMITED
   FIELDS TERMINATED BY '\t'
   LINES TERMINATED BY '\n' 
-STORED AS TEXTFILE
-AS SELECT
-  *
+STORED AS TEXTFILE;
+
+
+INSERT OVERWRITE TABLE talk_diff
+PARTITION (ns='user', year)
+SELECT
+    rev_comment,
+    SUBSTRING(insertion, 0, 5000) as insertion,
+    insert_only,
+    rev_id,
+    page_id,
+    page_title,
+    rev_timestamp,
+    user_id,
+    user_text,
+    SUBSTRING(rev_timestamp, 1, 4) as year
 FROM
   user_talk_diff_external;
 
-DROP TABLE IF EXISTS user_talk_diff_no_bot;
-CREATE TABLE user_talk_diff_no_bot (
-    rev_comment STRING,
-    insertion STRING,
-    insert_only STRING,
-    rev_id STRING,
-    page_id STRING,
-    page_title STRING,
-    rev_timestamp STRING,
-    user_id STRING,
-    user_text STRING
-)
-PARTITIONED BY (year STRING)
-ROW FORMAT DELIMITED
-  FIELDS TERMINATED BY '\t'
-  LINES TERMINATED BY '\n' 
-STORED AS TEXTFILE;
-
-
-INSERT OVERWRITE TABLE user_talk_diff_no_bot
-PARTITION (year)
+INSERT OVERWRITE TABLE talk_diff
+PARTITION (ns='article', year)
 SELECT
     rev_comment,
     SUBSTRING(insertion, 0, 5000) as insertion,
@@ -207,31 +94,48 @@ SELECT
     user_text,
     SUBSTRING(rev_timestamp, 1, 4) as year
 FROM
-  user_talk_diff
+  article_talk_diff_external;
+
+
+select ns, year, count(*) from talk_diff where ns in ('article', 'user') group by ns, year;
+
+DROP TABLE IF EXISTS talk_diff_no_bot;
+CREATE TABLE talk_diff_no_bot (
+    rev_comment STRING,
+    insertion STRING,
+    insert_only STRING,
+    rev_id STRING,
+    page_id STRING,
+    page_title STRING,
+    rev_timestamp STRING,
+    user_id STRING,
+    user_text STRING
+)
+PARTITIONED BY (ns STRING, year STRING)
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE;
+
+
+INSERT OVERWRITE TABLE talk_diff_no_bot
+PARTITION (ns, year)
+SELECT
+    t.*
+FROM
+  talk_diff t
 WHERE
-    user_text != 'MediaWiki message delivery'
+    ns RLIKE '.*'
+    AND user_text != 'MediaWiki message delivery'
     AND user_text != 'Maintenance script'
-    AND user_text NOT RLIKE 'bot|Bot|BOT'
-    AND insertion NOT RLIKE '== Your account will be renamed =='
-;
-
-DROP TABLE IF EXISTS user_talk_diff_no_bot_sample;
-CREATE TABLE user_talk_diff_no_bot_sample
-ROW FORMAT DELIMITED
-  FIELDS TERMINATED BY '\t'
-  LINES TERMINATED BY '\n' 
-STORED AS TEXTFILE
-AS SELECT 
-    *
-FROM
-    enwiki.user_talk_diff_no_bot
-WHERE year > 0
-ORDER BY RAND()
-LIMIT 500000;
+    AND user_text NOT RLIKE 'bot|Bot|BOT';
 
 
-DROP TABLE IF EXISTS user_talk_diff_no_admin;
-CREATE TABLE user_talk_diff_no_admin (
+select ns, year, count(*) from talk_diff_no_bot where ns in ('article', 'user') group by ns, year;
+
+
+DROP TABLE IF EXISTS talk_diff_no_admin;
+CREATE TABLE talk_diff_no_admin (
     rev_comment STRING,
     insertion STRING,
     insert_only STRING,
@@ -242,7 +146,7 @@ CREATE TABLE user_talk_diff_no_admin (
     user_id STRING,
     user_text STRING
 )
-PARTITIONED BY (year STRING)
+PARTITIONED BY (ns STRING, year STRING)
 ROW FORMAT DELIMITED
   FIELDS TERMINATED BY '\t'
   LINES TERMINATED BY '\n' 
@@ -250,11 +154,11 @@ STORED AS TEXTFILE;
 
 
 
-INSERT OVERWRITE TABLE user_talk_diff_no_admin
-PARTITION (year)
+INSERT OVERWRITE TABLE talk_diff_no_admin
+PARTITION (ns='user', year)
 SELECT
     rev_comment,
-    SUBSTRING(insertion, 0, 5000) as insertion,
+    insertion,
     insert_only,
     rev_id,
     page_id,
@@ -262,11 +166,11 @@ SELECT
     rev_timestamp,
     user_id,
     user_text,
-    SUBSTRING(rev_timestamp, 1, 4) as year
+    year
 FROM
-  user_talk_diff_no_bot
+  talk_diff_no_bot
 WHERE
-    year > 0
+    ns = 'user'
     AND insertion NOT RLIKE '\\[\\[Image:Octagon-warning'
     AND insertion NOT RLIKE '\\[\\[Image:Stop'
     AND insertion NOT RLIKE '\\[\\[Image:Information.'
@@ -298,19 +202,25 @@ WHERE
     AND insertion NOT RLIKE '== Your account will be renamed =='
 ;
 
-DROP TABLE IF EXISTS user_talk_diff_no_admin_sample;
-CREATE TABLE user_talk_diff_no_admin_sample
-ROW FORMAT DELIMITED
-  FIELDS TERMINATED BY '\t'
-  LINES TERMINATED BY '\n' 
-STORED AS TEXTFILE
-AS SELECT 
-    *
+
+INSERT OVERWRITE TABLE talk_diff_no_admin
+PARTITION (ns='article', year)
+SELECT
+    rev_comment,
+    insertion,
+    insert_only,
+    rev_id,
+    page_id,
+    page_title,
+    rev_timestamp,
+    user_id,
+    user_text,
+    year
 FROM
-    enwiki.user_talk_diff_no_admin
-WHERE year > 0
-ORDER BY RAND()
-LIMIT 500000;
+  talk_diff_no_bot
+WHERE
+    ns = 'article';
+
 
 
 DROP TABLE IF EXISTS block_events;
@@ -351,69 +261,35 @@ WHERE
 GROUP BY log_title;
 
 
-DROP TABLE IF EXISTS blocked_user_talk_diff_no_admin;
-CREATE TABLE blocked_user_talk_diff_no_admin
+
+DROP TABLE IF EXISTS blocked_talk_diff_no_admin;
+CREATE TABLE blocked_talk_diff_no_admin (
+    rev_comment STRING,
+    insertion STRING,
+    insert_only STRING,
+    rev_id STRING,
+    page_id STRING,
+    page_title STRING,
+    rev_timestamp STRING,
+    user_id STRING,
+    user_text STRING
+)
+PARTITIONED BY (ns STRING, year STRING)
 ROW FORMAT DELIMITED
   FIELDS TERMINATED BY '\t'
   LINES TERMINATED BY '\n' 
-STORED AS TEXTFILE
-AS SELECT
-  d.*,
-  reasons as block_reasons,
-  timestamps block_timestamps,
-  actions block_actions,
-  params as block_params
+STORED AS TEXTFILE;
+
+
+INSERT OVERWRITE TABLE blocked_talk_diff_no_admin
+PARTITION (ns, year)
+SELECT
+  d.*
 FROM
-  user_talk_diff_no_admin d
+  talk_diff_no_admin d
 JOIN
   blocked_user u
 ON d.user_text = u.user_text
-WHERE d.year > 0;
+WHERE ns RLIKE '.*';
 
-
---out of commision
-
-DROP TABLE IF EXISTS blocked_user_talk_diff;
-CREATE TABLE blocked_user_talk_diff
-ROW FORMAT DELIMITED
-  FIELDS TERMINATED BY '\t'
-  LINES TERMINATED BY '\n' 
-STORED AS TEXTFILE
-AS SELECT
-  d.*,
-  reasons as block_reasons,
-  timestamps block_timestamps,
-  actions block_actions,
-  params as block_params
-FROM user_talk_diff d JOIN blocked_user u
-ON d.user_text = u.user_text;
-
-
-
-mkdir ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot
-hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/user_talk_diff_no_bot/year=2015 ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot/
-
-rsync -avz  stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/user_talk_diff_no_bot/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot/
-
-hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/user_talk_diff_no_bot_sample ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot_sample
-
-rsync -avz  stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/user_talk_diff_no_bot_sample/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_bot_sample/
-
-
-
-mkdir ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin
-hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/user_talk_diff_no_admin/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin/
-
-rsync -avz  stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/user_talk_diff_no_admin/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin/
-
-
-hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/user_talk_diff_no_admin_sample ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin_sample
-
-rsync -avz  stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/user_talk_diff_no_admin_sample/* ~/talk_page_abuse/wikipedia/data/user_talk_diff_no_admin_sample/
-
-
-
-hadoop fs -copyToLocal /user/hive/warehouse/enwiki.db/blocked_user_talk_diff_no_admin ~/talk_page_abuse/wikipedia/data/blocked_user_talk_diff_no_admin
-
-rsync -avz stat1002.eqiad.wmnet:talk_page_abuse/wikipedia/data/blocked_user_talk_diff_no_admin/* ~/talk_page_abuse/wikipedia/data/blocked_user_talk_diff_no_admin
-
+select ns, count(*) from blocked_talk_diff_no_admin where ns in ('article', 'user') group by ns;

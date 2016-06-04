@@ -12,6 +12,7 @@ months = ['January',
           'February',
           'March',
           'April',
+          'May',
           'June',
           'July',
           'August',
@@ -76,13 +77,13 @@ def clean(df):
     df['clean_diff'] = df['clean_diff'].apply(strip_html)
     df['clean_diff'] = df['clean_diff'].apply(lambda x: substitute_patterns(x, post_sub_patterns))
 
-
     try:
         del df['rank']
     except:
         pass
     df.dropna(subset = ['clean_diff'], inplace = True)
-    df = df[df['clean_diff'] != '']
+    if not df.empty:
+        df = df[df['clean_diff'] != '']
     return df
 
 
@@ -149,15 +150,17 @@ patterns =[
 
 def clean_and_filter(df, min_words=3, min_chars=20):
     t1 = time.time()
-    print('Raw:', df.shape[0])
+    #print('Raw:', df.shape[0])
     df = clean(df).dropna(subset = ['clean_diff'])
-    print('Cleaned: ', df.shape[0])
+    if df.empty:
+        return df
+    #print('Cleaned: ', df.shape[0])
     df = exclude_few_tokens(df, min_words)
-    print('No Few Words: ', df.shape[0])
+    #print('No Few Words: ', df.shape[0])
     df = exclude_short_strings(df, min_chars)
-    print('No Few Chars: ', df.shape[0])
+    #print('No Few Chars: ', df.shape[0])
     t2 = time.time()
-    print('Cleaning and Filtering Time:',(t2-t1) / 60.0)
+    #print('Cleaning and Filtering Time:',(t2-t1) / 60.0)
     return df
 
 ### Data Viz ###

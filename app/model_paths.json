@@ -1,4 +1,1 @@
-{
-    "insult": "../wikipedia/models/recipient_ngram.pkl",
-    "aggression": "../wikipedia/models/aggression_regression_ngram.pkl"
-}
+{"attack": {"path": "../wikipedia/models/recipient_ngram.pkl", "classes": ["not attack", "attack"]}, "aggression": {"path": "../wikipedia/models/aggression_classification_ngram.pkl", "classes": ["aggressive", "neutral", "friendly"]}}

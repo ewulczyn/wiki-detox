@@ -20,8 +20,12 @@ def get_insult_scores():
     print(request.args)
     t1 = time.time()
 
-    assert(request.args.get('model', '') in models)
+    assert(request.args.get('model', '') in model_data.keys())
     assert('text' in request.args or 'rev_id' in request.args)
+
+    mtype = request.args['model']
+    model = model_data[mtype]['model']
+    classes = model_data[mtype]['classes']
 
     ret = {}
 
@@ -32,8 +36,9 @@ def get_insult_scores():
         text = request.args['text']
     
     if text:
-        prob = models[request.args['model']].predict_proba([text])[0][1]
-        ret['p'] = '%0.2f' % prob
+        probs = model.predict_proba([text])[0]
+        probs = ['%0.2f' % p for p in probs]
+        ret['p'] = list(zip(classes, probs))
     
     t2 = time.time()
     print('Total Time:', t2-t1)
@@ -62,9 +67,11 @@ parser.add_argument(
 )
 
 args, unknown = parser.parse_known_args()
-model_paths = json.load(open(args.model_paths))
-print(model_paths)
-models = {k : joblib.load(v) for k,v in model_paths.items()}
+model_data = json.load(open(args.model_paths))
+print(model_data)
+
+for k, v in model_data.items():
+    v['model'] = joblib.load(v['path'])
 
 
 if __name__ == "__main__":

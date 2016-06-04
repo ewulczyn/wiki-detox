@@ -1,48 +1,48 @@
 
 
-$('#insult-text-input').click(function () {
-    $('#insult-text-score').empty()
-    $('#insult-text-score').append('Insult Probability: ')
+$('#itype').on('change', function() {
+   $('#model-input').attr("placeholder", $('input[name="itype"]:checked').val()); 
 });
 
 
-$('#insult-text-submit').click(function () {
-    comment = encodeURIComponent($('#insult-text-input').val());
-    $.get(
-        'api?model=insult&text=' + comment, // The URL to call
-        function(data) { // Success event handler
-            if( !('p' in data)) {
-                $('#insult-text-score').text('ERROR')
-            }else {
-                html = 'Insult Probability: ' + '<span id="text-prob">' + data['p'] + '<\span>'
-                $('#insult-text-score').html(html)
-                $('#text-prob').css('color', 'green')
-            }
+$('#model-submit').click(function () {
+
+        mtype = $('input[name="mtype"]:checked').val()
+        itype = $('input[name="itype"]:checked').val()
+        idata  = encodeURIComponent($('#model-input').val());
+
+        if (itype == 'Comment Text'){
+
+            $.get(
+                'api?model=' + mtype + '&text=' + idata, // The URL to call
+                function(data) { // Success event handler
+                    if( !('p' in data)) {
+                        $('#model-score').text('ERROR')
+                    }else {
+                        html =  JSON.stringify(data['p']); 
+                        $('#model-score').html(html)
+                    }
+                }
+            );
+
+        }else{
+
+            $.get(
+                'api?model=' + mtype + '&rev_id=' + idata, // The URL to call
+                function(data) { // Success event handler
+                    if( !('p' in data)) {
+                        $('#model-score').text('ERROR')
+                    }else {
+                        $('#model-score').empty()
+                        $('#model-score').append('<p><b>Comment: </b></p>')
+                        $('#model-score').append('<p>' + data['text'] + '<p>')
+                        html =  data['p'] 
+                        $('#model-score').html(html)
+                    }
+                }
+            );
         }
-    );
+
+
 });
 
-
-
-$('#insult-id-input').click(function () {
-    $('#insult-id-score').empty()
-    $('#insult-id-score').text('Insult Probability: ')
-});
-
-$('#insult-id-submit').click(function () {
-    rev_id = encodeURIComponent($('#insult-id-input').val());
-    $.get(
-        'api?model=insult&rev_id=' + rev_id, // The URL to call
-        function(data) { // Success event handler
-            if( !('p' in data)) {
-                $('#insult-id-score').text('ERROR')
-            }else {
-                $('#insult-id-score').empty()
-                $('#insult-id-score').append('<p><b>Comment: </b></p>')
-                $('#insult-id-score').append('<p>' + data['text'] + '<p>')
-                $('#insult-id-score').append('<p>Insult Probability: ' + '<span id="text-prob">' + data['p'] + '<\span></p>')
-                $('#text-prob').css('color', 'green')
-            }
-        }
-    );
-});

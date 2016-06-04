@@ -89,7 +89,7 @@ def plurality(l):
     s.name = 'y'
     return s
 
-def empirical_dist(l, w = 0.5, index = None):
+def empirical_dist(l, w = 0.25, index = None):
 
     """
     Compute empirical distribution over all classes
@@ -149,12 +149,23 @@ def cross_entropy(x, y):
 def kl_divergence(x, y):
     return kl(x.T, y.T).mean()
 
+
 def tidy_labels(d):
     classes = ['not_attack', 'other', 'quoting', 'recipient', 'third_party']
     for e in classes:
         d[e] = d.is_harassment_or_attack.str.contains(e).astype(float)
     d['attack'] = d.is_harassment_or_attack.str.contains('|'.join(classes[1:])).astype(float)
     return d
+
+def map_aggression_score_to_3class(l):
+    if l<0.0:
+        return 0
+    if l > 0.0:
+        return 2
+    else:
+        return 1
+
+
 
 def load_cf_data():
     blocked = [
@@ -176,7 +187,7 @@ def load_cf_data():
 
     blocked_dfs = []
     for f in blocked:
-        d = pd.read_csv('../../data/v4_annotated/%s.csv' % f)
+        d = pd.read_csv('../../data/v4_annotated/user/%s.csv' % f)
         d = d.query('_golden == False')
         d.index = d.rev_id
         d['src'] = f
@@ -184,7 +195,7 @@ def load_cf_data():
 
     random_dfs = []
     for f in random:
-        d = pd.read_csv('../../data/v4_annotated/%s.csv' % f)
+        d = pd.read_csv('../../data/v4_annotated/user/%s.csv' % f)
         d = d.query('_golden == False')
         d.index = d.rev_id
         d['src'] = f

@@ -1,0 +1,127 @@
+https://en.wikipedia.org/wiki/Template:Uw-npa1
+
+select count(*) from talk_diff where ns='user' and insertion rlike '-npa';
+36520
+
+select count(*) from talk_diff where ns='user' and insertion rlike 'Template.*-npa';
+34752
+
+
+SELECT
+    insertion
+FROM
+    talk_diff
+WHERE
+    ns='user'
+    AND insertion RLIKE '-npa'
+    AND insertion RLIKE $REGEX
+LIMIT 10;
+
+which you did here: [[:User:SquidSK]]
+as you did here: [[::Image:CMWLogo.png]]
+regards to your comments on [[:User:Jordan Elder]]
+as you did at [[:User talk:TheManWhoLaughs]]
+regards to your comments on [[:User talk:Crcar2]]
+as you did here: [[:Fat]]
+as you did at [[:Kellie Roughley]]
+regards to your comments on [[:User talk:Praveen pillay]]
+regard to your comments on [[:User talk:Durin]]
+as you did at [[:User talk:Alison]]
+as you did here: [[:Eric Bialek]]
+as you did here: [[:Def Leppard]]
+as you did at [[:User talk:Caltas]]
+as you did here: [[:{{{1}}}]]
+which you did here: [[:User talk:ST47]]
+
+'you did here:|you did at|regards to your comments on': 16697
+
+'you did here:|you did at|your comments on': 17278
+
+
+as you did on [[:Talk:Tony Blair#What is he doing now?]]
+your comments on [[:User talk:124.182.159.236]]
+
+
+'you did here:|you did at|your comments on|you did on': 27860
+
+no citations left, the regex is done
+
+
+DROP TABLE IF EXISTS enwiki.npa_warnings;
+CREATE TABLE enwiki.npa_warnings
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '\t'
+LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
+AS SELECT
+    t.rev_timestamp AS warning_timestamp,
+    t.user_text AS warning_user_text,
+    t.page_title AS attacker_user_text,
+    CASE
+        WHEN LENGTH(ref) == 0 THEN 'no ref'
+        WHEN ref RLIKE '\\{\\{\\{1\\}\\}\\}' THEN 'template'
+        WHEN ref RLIKE '^:User talk:.+' THEN 'user talk'
+        WHEN ref RLIKE '^:User:.+' THEN 'user'
+        WHEN ref RLIKE '^:Talk:.+' THEN 'article talk'
+        WHEN ref RLIKE '^:.+' THEN 'article'
+        ELSE 'other'
+    END AS attack_ns,
+    CASE
+        WHEN ref RLIKE '\\{\\{\\{1\\}\\}\\}' THEN NULL
+        WHEN ref RLIKE '^:User talk:.+' THEN regexp_extract(ref, '^:User talk:([^\\/#:]+)', 1)
+        WHEN ref RLIKE '^:User:.+' THEN regexp_extract(ref, '^:User:([^\\/#:]+)', 1)
+        WHEN ref RLIKE '^:Talk:.+' THEN regexp_extract(ref, '^:Talk:([^\\/#:]+)', 1)
+        WHEN ref RLIKE '^:.+' THEN regexp_extract(ref, '^:([^\\/#:]+)', 1)
+        ELSE NULL
+    END AS attacked_page_title
+FROM
+    (SELECT
+        talk_diff.*,
+        regexp_extract(insertion, '(you did here:|you did at|your comments on|you did on) \\[\\[(.*?)\\]\\]', 2) as ref
+    FROM
+        talk_diff
+    WHERE
+        ns='user'
+        AND insertion RLIKE '-npa'
+    ) t;
+
+SELECT count(*), attack_ns from npa_warnings group by attack_ns;
+
+6564    article
+3939    article talk
+8742    no ref
+89  other
+4802    template
+3232    user
+9152    user talk
+
+
+-- get last k comments made by the attacker on the attacked page
+
+
+SELECT
+    b.insertion
+FROM
+    (
+    SELECT 
+        a.*,
+        RANK() OVER (PARTITION BY a.user_text, a.page_title ORDER BY a.rev_timestamp DESC) as rank
+    FROM
+        (
+        SELECT
+            t.*
+        FROM
+            npa_warnings w, talk_diff_no_admin t
+        WHERE
+            w.attacker_user_text = t.user_text
+            AND w.attacked_page_title = t.page_title
+            AND w.warning_timestamp > t.rev_timestamp
+            AND w.attack_ns in ('user talk', 'article talk')
+            AND t.ns in ('user', 'article')
+        ) a
+    ) b
+WHERE
+    rank <= 1
+LIMIT 100;
+
+

@@ -1,60 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
+  <!DOCTYPE html>
+  <html lang="en">
 
-  <head>
-    <title>Online Discussion Modeling</title>
-    <link href="http://getbootstrap.com/dist/css/bootstrap.min.css" rel="stylesheet">
-  </head>
+    <head>
+      <title>Online Discussion Modeling</title>
+      <link href="http://getbootstrap.com/dist/css/bootstrap.min.css" rel="stylesheet">
+    </head>
 
-  <body>
+    <body>
 
-  <!-- Header-->
-  <div class="container-fluid">
-    <div class="jumbotron">
-      <h1>Online Discussion Modeling</h1>
-      <h6>A collection of machine learning classifiers for evaluating online discussion comments</h3>
-      </div>
-  </div>
-  <!-- Model Description-->
-  <div class="container-fluid">
-    <h3>Insult Model</h3>
-    <p> This model was trained on data Wikipedia Talk page comments and gives the probability that the comment contains an insult.</p>
-    </br>
-  </div>
-  <!-- Scoring Interface-->
-  <div class="container-fluid">
-  <div class="row">
-    <div class="col-xs-6 col-sm-6 col-md-6 col-lg-6">
-      <form action="" method="POST" role="form">
-        <div class="form-group">
-          <label for="insult-text-input">Discussion Comment</label>
-          <textarea class="form-control" id="insult-text-input" placeholder="Comment Text"></textarea>
+    <!-- Header-->
+    <div class="container-fluid">
+      <div class="jumbotron">
+        <h1>Wikipedia DeTox</h1>
+        <h5>A collection of machine learning classifiers for detecting toxicity in Wikipedia discussions</h5>
         </div>
-        <div id='insult-text-score'>
-          <p>Insult Probability:</p>
-        </div>
-        <button type="button" class="btn btn-primary" id="insult-text-submit">Score</button>
-      </form>
     </div>
-    <div class="col-xs-6 col-sm-6 col-md-6 col-lg-6">
-      <form action="" method="POST" role="form">
+    
+    <div class="container-fluid">
+
+
+    <div class="row">
+        <div class="col-xs-6 col-sm-6 col-md-6 col-lg-6">
+
+        <form action="" method="POST" role="form">
+
         <div class="form-group">
-          <label for="insult-id-input">Wikipedia Revision ID</label>
-          <input type='text' class="form-control" id="insult-id-input" placeholder="Revision ID">
+          <h4>Select a model:</h4>
+          <input type="radio" name="mtype" value="attack" checked /> Attack <br />
+          <input type="radio" name="mtype" value="aggression" /> Aggression <br />
         </div>
-        </br>
-        <div id='insult-id-score'>
-          <p>Insult Probability:</p>
+
+        <div class="form-group" id='itype'>
+          <h4>Select Input Type:</h4>
+          <input type="radio" name="itype" value="Comment Text" checked/> Text <br />
+          <input type="radio" name="itype" value="Revision ID" /> Revision ID <br />
         </div>
-        <button type="button" class="btn btn-primary" id="insult-id-submit">Score</button>
+        
+        <div class="form-group" id='input'>
+          <textarea class="form-control" id="model-input" placeholder="Comment Text"></textarea>
+          </br>
+          <button type="button" class="btn btn-primary" id="model-submit">Score</button>
+          <div id='model-score'>
+          </div>
+        </div>
       </form>
     </div>
   </div>
 
-  </body>
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script> 
-  <script src="http://getbootstrap.com/dist/js/bootstrap.min.js"></script> 
-  <script src="static/js/score.js"></script> 
-</html>
+
+  </div>
+
+
+    </body>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script> 
+    <script src="http://getbootstrap.com/dist/js/bootstrap.min.js"></script> 
+    <script src="static/js/score.js"></script> 
+  </html>
 
 

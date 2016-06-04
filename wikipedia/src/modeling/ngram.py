@@ -39,7 +39,7 @@ from sklearn.preprocessing import label_binarize
 from math import sqrt
 from pprint import pprint
 
-from baselines import rmse
+from baselines import rmse, tidy_labels
 
 
 def get_labeled_comments(d, labels):
@@ -633,5 +633,23 @@ def multi_class_roc_plotter(y_test, y_score, plot = True):
 def eval_multiclass_classifier(model, data):
     y_score = model.predict_proba(data['x'])
     y_test = data['y'].values
-
     return multi_class_roc_plotter(y_test, y_score, plot = True)
+
+
+def tf_prep(d, pipeline, col, label_agg_func):
+    d = d.copy().pipe(tidy_labels).dropna(subset=[col])
+    labels = label_agg_func(d[col])
+    
+    data = get_labeled_comments(d, labels)
+    train, test = train_test_split(data, test_size = 0.2, random_state=0)
+
+    y_train =train.ix[:, train.columns != 'x'].values
+    y_test =test.ix[:, train.columns != 'x'].values
+
+    ngram_feature_extractor = pipeline.fit(train['x'])
+    X_train = ngram_feature_extractor.transform(train['x'])
+    X_test = ngram_feature_extractor.transform(test['x'])
+    
+    return X_train, y_train, X_test, y_test
+
+
