@@ -19,8 +19,14 @@ $('#model-submit').click(function () {
                     if( !('p' in data)) {
                         $('#model-score').text('ERROR')
                     }else {
-                        html =  JSON.stringify(data['p']); 
-                        $('#model-score').html(html)
+                        arr = data['p']
+                        res = ''
+                        for(var i=0; i < arr.length; i++){
+                            res += '<p>' + arr[i][0] + ': ' + arr[i][1]
+                        }
+                        $('#model-score').empty()
+                        $('#model-score').append('<p><b>Results: </b></p>')
+                        $('#model-score').append(res)
                     }
                 }
             );
@@ -36,8 +42,13 @@ $('#model-submit').click(function () {
                         $('#model-score').empty()
                         $('#model-score').append('<p><b>Comment: </b></p>')
                         $('#model-score').append('<p>' + data['text'] + '<p>')
-                        html =  data['p'] 
-                        $('#model-score').html(html)
+                        arr = data['p']
+                        res = ''
+                        for(var i=0; i < arr.length; i++){
+                            res += '<p>' + arr[i][0] + ': ' + arr[i][1]
+                        }
+                        $('#model-score').append('<p><b>Results: </b></p>')
+                        $('#model-score').append(res)
                     }
                 }
             );
