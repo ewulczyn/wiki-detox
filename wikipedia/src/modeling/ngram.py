@@ -50,7 +50,7 @@ def get_labeled_comments(d, labels):
     c.index = c.rev_id
     c = c['clean_diff']
     c.name = 'x'
-    data = pd.concat([c, labels], axis = 1)
+    data = pd.concat([c, labels], axis = 1, join = 'inner')
 
     # shuffle
     m = data.shape[0]
