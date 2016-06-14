@@ -60,19 +60,16 @@ def get_labeled_comments(d, labels):
 
 
 
-def tune (X, y, alg, param_grid, scoring, n_jobs = 1, dev_size = 0.2, verbose = False):
+def tune (X, y, alg, param_grid, scoring, n_jobs = 1, dev_size = 0.2, verbose = False, refit = False):
     """
     Determine the best model via cross validation. This should be run on training data.
     """ 
     # generate train + dev set
     m = len(X)
-    np.random.seed(seed=0)
-    shuffled_indices = np.random.permutation(np.arange(m))
-    s = int(m*dev_size)
-    split = [(shuffled_indices[:s], shuffled_indices[s:])]
+    split = ShuffleSplit(m, n_iter=1, test_size=0.3)
     
     # perform gridsearch
-    model = GridSearchCV(cv  = 3, estimator = alg, param_grid = param_grid, scoring = scoring, n_jobs=n_jobs, refit=True)
+    model = GridSearchCV(cv  = split, estimator = alg, param_grid = param_grid, scoring = scoring, n_jobs=n_jobs, refit=refit)
     model = model.fit(X,y)
     if verbose:
         print("\nBest parameters set found:")
@@ -636,8 +633,13 @@ def eval_multiclass_classifier(model, data):
     return multi_class_roc_plotter(y_test, y_score, plot = True)
 
 
+
+def get_y(d):
+    return d.ix[:, d.columns != 'x'].values
+
+
 def tf_prep(d, pipeline, col, label_agg_func):
-    d = d.copy().pipe(tidy_labels).dropna(subset=[col])
+    d = d.copy().dropna(subset=[col])
     labels = label_agg_func(d[col])
     
     data = get_labeled_comments(d, labels)

@@ -6,7 +6,7 @@ from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, mean_square
 from math import sqrt
 
 
-def get_baseline_matrix(labels, k, agg_function, eval_function):
+def get_baseline_matrix(labels, k, agg_function, eval_function, diagonal = False):
 
     """      
     Say we have 2k human scores for each comment. For each comment, for
@@ -39,14 +39,14 @@ def get_baseline_matrix(labels, k, agg_function, eval_function):
     labels = labels.dropna()
     groups = labels.groupby(labels.index)
     groups = [e[1] for e in groups if e[1].shape[0]>=k]
-    
-    print('Num comments with k labels', len(groups))
-    
+        
     r = pd.DataFrame(np.zeros((m, n)))
     r.index = r.index +1
     r.columns = r.columns +1
 
     for i in range(1, m+1):
+        if diagonal:
+            n = i
         for j in range(i, n+1):
             if (i+j) > k:
                 continue
@@ -64,10 +64,13 @@ def get_baseline_matrix(labels, k, agg_function, eval_function):
             di =  pd.concat(dis)
             dj = pd.concat(djs)
 
-            scores_i = agg_function (di)
-            scores_j = agg_function (dj)
+            scores_i = agg_function(di).values
+            scores_j = agg_function(dj).values
 
             r.ix[i,j] = "%0.3f" % eval_function(scores_i,scores_j)
+
+    if diagonal:
+        r = r.values.diagonal()
     return r
 
 
@@ -97,6 +100,7 @@ def empirical_dist(l, w = 0.25, index = None):
     """
     if not index:
         index = sorted(list(set(l.dropna().values)))
+
     data = {}
     for k, g in l.groupby(l.index):
         data[k] = g.value_counts().reindex(index).fillna(0) + w
@@ -107,7 +111,7 @@ def empirical_dist(l, w = 0.25, index = None):
     return labels
 
 
-# Evaluation Metrics
+# Regression Evaluation Metrics
 
 def pearson(x,y):
     return pearsonr(x,y)[0]
@@ -118,13 +122,14 @@ def spearman(x,y):
 def rmse(x,y):
     return sqrt(mean_squared_error(x, y))
 
+# Binary Classification Evaluation Metrics
 
 
-def roc_auc(pred, true):
+def binary_roc_auc(true, pred):
     true = (true > 0.5).astype(float)
     return roc_auc_score(true, pred)
 
-def optimal_f1(pred, true, step = 1):
+def binary_optimal_f1(true, pred, step = 1):
     binary_true = (true > 0.5).astype(float)
     ts = [np.percentile(pred, p) for p in np.arange(0, 101, step)]
     f1s = []
@@ -139,6 +144,26 @@ def optimal_f1(pred, true, step = 1):
 
     return f1s[-1]
 
+# Multi-Class Classification Evaluation Metrics
+
+def one_hot(y):
+    y_oh = np.zeros(y.shape)
+    y_oh[list(range(y.shape[0])), y.argmax(axis = 1)] = 1
+    return y_oh
+
+def expectation(y):
+    classes = np.arange(y.shape[1])
+    return y.dot(classes)
+
+def multi_class_roc_auc(true, pred, average = 'macro'):
+    true = one_hot(true)
+    return roc_auc_score(true, pred, average = average)
+
+def multi_class_spearman(true, pred):
+    return spearman(expectation(true), expectation(pred))
+
+def multi_class_pearson(true, pred):
+    return pearson(expectation(true), expectation(pred))
 
 
 def cross_entropy(x, y):
@@ -148,7 +173,6 @@ def cross_entropy(x, y):
 
 def kl_divergence(x, y):
     return kl(x.T, y.T).mean()
-
 
 def tidy_labels(d):
     classes = ['not_attack', 'other', 'quoting', 'recipient', 'third_party']
@@ -167,11 +191,11 @@ def map_aggression_score_to_3class(l):
 
 
 
-def load_cf_data():
+def load_cf_data(baseline = False):
     blocked = [
+                'annotated_onion_layer_5_rows_0_to_5000_raters_20',     #annotated 20 times
                 'annotated_onion_layer_5_rows_0_to_10000',              #annotated 7 times
                 'annotated_onion_layer_5_rows_0_to_10000_raters_3',           #annotated 3 times
-                'annotated_onion_layer_5_rows_0_to_5000_raters_20',     #annotated 20 times
                 'annotated_onion_layer_5_rows_10000_to_50526_raters_10',#annotated 10 times
                 'annotated_onion_layer_10_rows_0_to_1000',              #annotated ? times
                 'annotated_onion_layer_20_rows_0_to_1000',              #annotated ? times
@@ -184,6 +208,10 @@ def load_cf_data():
                 'annotated_random_data_rows_5000_to_10000_raters_3',
                 'annotated_random_data_rows_10000_to_20000_raters_10',
     ]
+
+    if baseline:
+        blocked = blocked[:1]
+        random = random[:1]
 
     blocked_dfs = []
     for f in blocked:
@@ -201,7 +229,12 @@ def load_cf_data():
         d['src'] = f
         random_dfs.append(d)
 
+    d_b = tidy_labels(pd.concat(blocked_dfs))
+    d_r = tidy_labels(pd.concat(random_dfs))
 
-    return tidy_labels(pd.concat(blocked_dfs)), tidy_labels(pd.concat(random_dfs))
+    d_b['aggression'] = d_b['aggression_score'].apply(map_aggression_score_to_3class)
+    d_r['aggression'] = d_r['aggression_score'].apply(map_aggression_score_to_3class)
+
+    return d_b, d_r 
 
 
