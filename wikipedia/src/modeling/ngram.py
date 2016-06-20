@@ -43,7 +43,6 @@ from baselines import *
 
 
 
-
 def tune (X, y, alg, param_grid, scoring, n_jobs = 1, dev_size = 0.2, verbose = False, refit = False):
     """
     Determine the best model via cross validation. This should be run on training data.

@@ -88,6 +88,11 @@ def average(l):
     s.name = 'y'
     return s
 
+def remove_na(l):
+    l['na'] = l['na'].fillna(value = False)
+    s = l.groupby(l.index).filter(lambda x: np.mean(x['na']) < 0.5)
+    return s
+
 def plurality(l):
     """
     Take the most common label from all labels with the same rev_id
