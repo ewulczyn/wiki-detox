@@ -2,11 +2,14 @@ import numpy as np
 import pandas as pd
 from scipy.stats import pearsonr,spearmanr
 from scipy.stats import entropy as kl
-from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, mean_squared_error, r2_score
+from sklearn.metrics import roc_auc_score, f1_score, mean_squared_error
 from math import sqrt
+from sklearn.cross_validation import ShuffleSplit
+from sklearn.preprocessing import label_binarize
 
+import multiprocessing as mp
 
-def get_baseline_matrix(labels, k, agg_function, eval_function, diagonal = False):
+def get_baseline(labels, k, agg_function, eval_function, pairs, n_jobs = 8):
 
     """      
     Say we have 2k human scores for each comment. For each comment, for
@@ -33,45 +36,46 @@ def get_baseline_matrix(labels, k, agg_function, eval_function, diagonal = False
     j_0). If it does, then it overfit to the group and you should increase j0.
 
     """
-    n = k-1
-    m = int(np.ceil(k/2))
+    
 
     labels = labels.dropna()
     groups = labels.groupby(labels.index)
     groups = [e[1] for e in groups if e[1].shape[0]>=k]
         
-    r = pd.DataFrame(np.zeros((m, n)))
-    r.index = r.index +1
-    r.columns = r.columns +1
+    args = [(groups, i, j, agg_function, eval_function) for i, j in pairs]
 
-    for i in range(1, m+1):
-        if diagonal:
-            n = i
-        for j in range(i, n+1):
-            if (i+j) > k:
-                continue
+    p = mp.Pool(min(n_jobs, len(args)))
+    res = p.map(baseline_helper, args)
+    p.close()
+    p.join()
+    #res = {}
+    #for i, j in pairs:
+    #    res[(i, j)] = baseline_helper(groups, i, j, eval_function)
+         
+    return dict(zip(pairs, res))
 
-            dis = []
-            djs = []
-            for g in groups:
-                if g.shape[0] >= i+j:
-                    g = g.iloc[np.random.permutation(len(g))]
-                    dis.append(g[0:i])
-                    djs.append(g[i:(i+j)])
-                else:
-                    print(i,j, g, "WARNING: Comment had less than k labels")
+def baseline_helper(args):
 
-            di =  pd.concat(dis)
-            dj = pd.concat(djs)
+    groups, i, j, agg_function, eval_function = args
 
-            scores_i = agg_function(di).values
-            scores_j = agg_function(dj).values
+    dis = []
+    djs = []
+    for g in groups:
+        if g.shape[0] >= i+j:
+            g = g.iloc[np.random.permutation(len(g))]
+            dis.append(g[0:i])
+            djs.append(g[i:(i+j)])
+        else:
+            print(i,j, g, "WARNING: Comment had less than k labels")
 
-            r.ix[i,j] = "%0.3f" % eval_function(scores_i,scores_j)
+    di =  pd.concat(dis)
+    dj = pd.concat(djs)
 
-    if diagonal:
-        r = r.values.diagonal()
-    return r
+    scores_i = agg_function(di).values
+    scores_j = agg_function(dj).values
+
+    return eval_function(scores_i,scores_j)
+
 
 
 # Aggregation Functions
@@ -147,8 +151,17 @@ def binary_optimal_f1(true, pred, step = 1):
 # Multi-Class Classification Evaluation Metrics
 
 def one_hot(y):
-    y_oh = np.zeros(y.shape)
-    y_oh[list(range(y.shape[0])), y.argmax(axis = 1)] = 1
+    m = y.shape[0]
+    
+    if len(y.shape) == 1:
+        n = len(set(y.ravel()))
+        idxs = y.astype(int)
+    else:
+        idxs = y.argmax(axis = 1)
+        n = y.shape[1]
+
+    y_oh = np.zeros((m, n))
+    y_oh[list(range(m)), idxs] = 1
     return y_oh
 
 def expectation(y):
@@ -157,6 +170,7 @@ def expectation(y):
 
 def multi_class_roc_auc(true, pred, average = 'macro'):
     true = one_hot(true)
+    #print(true)
     return roc_auc_score(true, pred, average = average)
 
 def multi_class_spearman(true, pred):
@@ -164,7 +178,6 @@ def multi_class_spearman(true, pred):
 
 def multi_class_pearson(true, pred):
     return pearson(expectation(true), expectation(pred))
-
 
 def cross_entropy(x, y):
     logy =  np.log(y)
@@ -190,9 +203,10 @@ def map_aggression_score_to_3class(l):
         return 1
 
 
+def load_annotations(baseline = False):
 
-def load_cf_data(baseline = False):
-    blocked = [
+    
+    user_blocked = [
                 'annotated_onion_layer_5_rows_0_to_5000_raters_20',     #annotated 20 times
                 'annotated_onion_layer_5_rows_0_to_10000',              #annotated 7 times
                 'annotated_onion_layer_5_rows_0_to_10000_raters_3',           #annotated 3 times
@@ -202,39 +216,98 @@ def load_cf_data(baseline = False):
                 'annotated_onion_layer_30_rows_0_to_1000',              #annotated ? times
     ]
 
-    random = [
+    user_random = [
                 'annotated_random_data_rows_0_to_5000_raters_20',
                 'annotated_random_data_rows_5000_to_10000',
                 'annotated_random_data_rows_5000_to_10000_raters_3',
                 'annotated_random_data_rows_10000_to_20000_raters_10',
     ]
 
-    if baseline:
-        blocked = blocked[:1]
-        random = random[:1]
+    article_blocked = ['article_onion_layer_5_all_rows_raters_10']
 
-    blocked_dfs = []
-    for f in blocked:
-        d = pd.read_csv('../../data/v4_annotated/user/%s.csv' % f)
-        d = d.query('_golden == False')
-        d.index = d.rev_id
-        d['src'] = f
-        blocked_dfs.append(d)
+    article_random = ['article_random_data_all_rows_raters_10']
 
-    random_dfs = []
-    for f in random:
-        d = pd.read_csv('../../data/v4_annotated/user/%s.csv' % f)
-        d = d.query('_golden == False')
-        d.index = d.rev_id
-        d['src'] = f
-        random_dfs.append(d)
 
-    d_b = tidy_labels(pd.concat(blocked_dfs))
-    d_r = tidy_labels(pd.concat(random_dfs))
+    files = {
+        'user': {'blocked': user_blocked, 'random': user_random},
+        'article': {'blocked': article_blocked, 'random': article_random}
+    }
 
-    d_b['aggression'] = d_b['aggression_score'].apply(map_aggression_score_to_3class)
-    d_r['aggression'] = d_r['aggression_score'].apply(map_aggression_score_to_3class)
 
-    return d_b, d_r 
+    data = {}
+    for ns, d in files.items():
+        data[ns] = {}
+        for sample, files in  d.items():
+            dfs = []
+            for f in files:
+                df = pd.read_csv('../../data/v4_annotated/%s/%s.csv' % (ns,f))
+                df = df.query('_golden == False')
+                df.index = df.rev_id
+                df['src'] = f
+                df['ns'] = ns
+                df['sample'] = sample
+                dfs.append(df)
+            df = pd.concat(dfs)
+            df = tidy_labels(df)
+            df['aggression'] = df['aggression_score'].apply(map_aggression_score_to_3class)
+            data[ns][sample] = df
+
+    return data
+
+
+
+def label_and_split(annotations, task, test_size = 0.2):
+    data = {}
+    for ns, _ in annotations.items():
+        data[ns] = {}
+        for sample, df in _.items():
+
+            #df = df[:50000]
+
+            data[ns][sample] = {}
+            comments = df[['clean_diff', 'rev_id', task]].dropna().drop_duplicates('rev_id')['clean_diff']
+            labels = df[task].dropna()
+
+            train_idxs, test_idxs = list(ShuffleSplit(len(comments), n_iter = 1, test_size=test_size, random_state = 345))[0]
+            splits = {'train': train_idxs, 'test': test_idxs}
+
+            for split_name, split_idxs in splits.items():
+                data[ns][sample][split_name] = {'x':{}, 'y':{}}
+
+                split_comments = comments.iloc[split_idxs]
+                data[ns][sample][split_name]['x']['comments'] = split_comments
+
+                split_labels = labels.loc[split_comments.index]
+                ed = empirical_dist(split_labels)
+                data[ns][sample][split_name]['y']['empirical_dist'] = ed
+
+                weights = pd.Series(ed.columns, index=ed.columns)
+                data[ns][sample][split_name]['y']['average'] = (ed * weights).sum(1)
+
+                data[ns][sample][split_name]['y']['plurality'] = ed.idxmax(axis = 1)
+
+    return data
+
+
+
+def assemble_data(data, xtype, ytype, nss = ['user', 'article'], samples = ['random', 'blocked'], splits = ['train', 'test']):
+    xs = []
+    ys = []
+
+    for ns in nss:
+        for sample in samples:
+            for split in splits:
+                x = data[ns][sample][split]['x'][xtype]
+                y = data[ns][sample][split]['y'][ytype]
+                x = x.loc[y.index]
+                xs.append(x)
+                ys.append(y)
+
+    return pd.concat(xs).values, pd.concat(ys).values
+
+
+
+
+
 
 
