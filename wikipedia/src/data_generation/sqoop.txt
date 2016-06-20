@@ -1,0 +1,102 @@
+sqoop import                                                      \
+  --connect jdbc:mysql://analytics-store.eqiad.wmnet/enwiki      \
+  --verbose                                                         \
+  --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_2XXXXX)      \
+  --delete-target-dir                                               \
+  --username research                                               \
+  --password-file /user/ellery/sqoop.password                       \
+  --split-by rev_parent_id                                              \
+  --hive-import                                                     \
+  --hive-database enwiki                                        \
+  --create-hive-table                                               \
+  --hive-table revision                                          \
+  --hive-delims-replacement ' '                                  \
+  --query '
+SELECT
+  rev_id,
+  rev_page,
+  rev_text_id,
+  CAST(rev_comment AS CHAR(255) CHARSET utf8) AS rev_comment,
+  rev_user,
+  CAST(rev_user_text AS CHAR(255) CHARSET utf8) AS rev_user_text,
+  CAST(rev_timestamp AS CHAR(14) CHARSET utf8) AS rev_timestamp,
+  rev_minor_edit,
+  rev_deleted,
+  rev_len,
+  rev_parent_id
+FROM revision
+WHERE $CONDITIONS '
+
+
+
+sqoop import                                                        \
+  --connect jdbc:mysql://analytics-store.eqiad.wmnet/enwiki    \
+  --verbose                                                         \
+  --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
+  --delete-target-dir                                               \
+  --username research                                               \
+  --password-file /user/ellery/sqoop.password                       \
+  --split-by a.page_id                                              \
+  --hive-import                                                     \
+  --hive-database enwiki                                      \
+  --create-hive-table                                               \
+  --hive-table page                                   \
+  --hive-delims-replacement ' '                                  \
+  --query '
+SELECT
+  a.page_id,
+  a.page_namespace,
+  CAST(a.page_title AS CHAR(255) CHARSET utf8) AS page_title
+FROM page a
+WHERE $CONDITIONS
+'  
+
+
+sqoop import                                                        \
+  --connect jdbc:mysql://analytics-store.eqiad.wmnet/enwiki    \
+  --verbose                                                         \
+  --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
+  --delete-target-dir                                               \
+  --username research                                               \
+  --password-file /user/ellery/sqoop.password                       \
+  --split-by a.user_id                                              \
+  --hive-import                                                     \
+  --hive-database enwiki                                      \
+  --create-hive-table                                               \
+  --hive-table user                                                 \
+  --hive-delims-replacement ' '                                  \
+  --query '
+SELECT
+  a.user_id AS user_id,
+  CAST(a.user_name AS CHAR(255) CHARSET utf8) AS user_name,
+  CAST(a.user_registration AS CHAR(14) CHARSET utf8) AS user_registration
+FROM user a
+WHERE $CONDITIONS
+'  
+
+
+sqoop import                                                        \
+  --connect jdbc:mysql://analytics-store.eqiad.wmnet/enwiki    \
+  --verbose                                                         \
+  --target-dir /tmp/$(mktemp -u -p '' -t ${USER}_sqoop_XXXXXX)      \
+  --delete-target-dir                                               \
+  --username research                                               \
+  --password-file /user/ellery/sqoop.password                       \
+  --split-by a.log_id                                              \
+  --hive-import                                                     \
+  --hive-database enwiki                                      \
+  --create-hive-table                                               \
+  --hive-table logging                                            \
+  --hive-delims-replacement ' '                                  \
+  --query '
+SELECT
+  a.log_id,
+  CAST(a.log_comment AS CHAR(255) CHARSET utf8) AS log_comment,
+  CAST(DATE_FORMAT(STR_TO_DATE(a.log_timestamp, "%Y%m%d%H%i%S"), "%Y-%m-%dT%H:%i:%SZ") AS CHAR(22) CHARSET utf8) AS log_timestamp,
+  CAST(a.log_params AS CHAR(255) CHARSET utf8) AS log_params,
+  CAST(a.log_title AS CHAR(255) CHARSET utf8) AS log_title,
+  CAST(a.log_action AS CHAR(32) CHARSET utf8) AS log_action,
+  CAST(a.log_type AS CHAR(32) CHARSET utf8) AS log_type
+FROM logging a
+WHERE $CONDITIONS
+'

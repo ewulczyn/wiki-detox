@@ -1,0 +1,23 @@
+https://en.wikipedia.org/wiki/Template:RPA
+
+SELECT
+    COUNT(*)
+FROM talk_diff
+WHERE
+    ns in ('user', 'article')
+    AND insertion RLIKE '\\{\\{RPA\\}\\}'
+LIMIT 10;
+
+429
+
+SELECT
+    COUNT(*)
+FROM talk_diff
+WHERE
+    ns in ('user', 'article')
+    AND insertion RLIKE '\\{\\{RPA'
+LIMIT 10;
+
+442
+
+Not worth pursuing
