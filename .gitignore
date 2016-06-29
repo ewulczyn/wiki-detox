@@ -64,3 +64,4 @@ target/
 *.xml
 data/
 *.txt
+.ipynb_checkpoints/
