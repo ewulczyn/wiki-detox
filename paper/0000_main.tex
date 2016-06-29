@@ -1,0 +1,219 @@
+\documentclass{sig-alternate-2013}
+
+\usepackage{graphicx}
+\usepackage{url}
+% to get formulae in the time font as well:
+\usepackage{mathptmx}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{subfigure}
+\usepackage{hyphenat}
+\usepackage{color}
+\usepackage{textcomp}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{mathtools}
+
+\usepackage[show]{chato-notes} % set to ``hide'' for submission
+%\usepackage[hide]{chato-notes} % set to ``hide'' for submission
+
+% Bob's package for nice Greek letters within a Times math environment.
+\usepackage{cmm-greek}
+
+\pdfinfo{
+/Title (Wikipedia Detox)
+/Author (Wulczyn, Thain, Dixon)
+}
+
+\newcommand{\hide}[1]{}
+%\newcommand{\xhdr}[1]{\vspace{2mm}\noindent{{\bf #1.}}}
+\newcommand{\xhdrX}[1]{\vspace{0mm}{\bf #1.}}
+%\newcommand{\xhdrNoPeriod}[1]{\vspace{0mm}{\bf #1}}
+\newcommand{\xhdr}[1]{\vspace{1.7mm}\noindent{{\bf #1.}}}
+\newcommand{\xhdrNoPeriod}[1]{\vspace{0mm}{\bf #1}}
+\newcommand{\cpt}[1]{\textsc{\MakeLowercase{#1}}}
+
+\newcommand{\rev}[1]{\textcolor{red}{#1}}
+\newcommand{\nithum}[1]{\textcolor{green}{#1}}
+\newcommand{\lucas}[1]{{\color{magenta}{#1}}}
+\newcommand{\ellery}[1]{\textcolor{orange}{#1}}
+
+\newcommand{\mtx}[1]{\mathbf{#1}}
+\newcommand{\trans}{^\top}
+
+\newcommand{\rank}{\text{rank}}
+
+\newcommand{\ie}{\textit{i.e.}}
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\cf}{\textit{cf.}}
+\newcommand{\etal}{\textit{et al.}}
+\newcommand{\vs}{\textit{vs.}}
+
+% References for sections and tables:
+\newcommand{\Secref}[1]{Sec.~\ref{#1}}
+\newcommand{\secref}[1]{Sec.~\ref{#1}}
+\newcommand{\eqnref}[1]{Eq.~\ref{#1}}
+\newcommand{\Eqnref}[1]{Eq.~\ref{#1}}
+\newcommand{\dashsecref}[2]{Sections~\ref{#1}--\ref{#2}}
+\newcommand{\dblsecref}[2]{Sections~\ref{#1} and \ref{#2}}
+\newcommand{\Tabref}[1]{Table~\ref{#1}}
+\newcommand{\tabref}[1]{Table~\ref{#1}}
+\newcommand{\Figref}[1]{Fig.~\ref{#1}}
+\newcommand{\figref}[1]{Fig.~\ref{#1}}
+
+% Abbreviations to reduce typing:
+\newcommand{\WP}{Wikipedia}
+
+%\enlargethispage{\baselineskip} % to add additional line to a page
+%\renewcommand{\baselinestretch}{0.983}
+\newcommand{\denselist}{ \itemsep -2pt\topsep-10pt\partopsep-10pt }
+\newcommand{\denselistRefs}{ \itemsep -2pt\topsep-5pt\partopsep-7pt }
+
+% for line breaks in tables; e.g., \specialcell[t]{Foo\\bar}:
+\newcommand{\specialcell}[3]{\begin{tabular}[#1]{@{}#2@{}}#3\end{tabular}}
+
+\clubpenalty = 10000
+\widowpenalty = 10000 
+
+% This is to have the Computer Modern \mathcal type instead of the very
+% curly one that comes with Times:
+\DeclareMathAlphabet{\mathcal}{OMS}{cmsy}{m}{n}
+
+\hyphenation{
+Wi-ki-pe-dia
+Wi-ki-pe-dias
+Wi-ki-da-ta
+Wi-ki-Proj-ect
+Wi-ki-Proj-ects
+Page-Rank
+prog-ress
+web-page
+web-pages
+where-as
+}
+
+
+\begin{document}%
+
+
+\title{
+Wikipedia Detox
+}
+
+\numberofauthors{4}
+\author{
+\alignauthor
+\hspace{-0.8cm}
+Ellery Wulczyn \\
+\hspace{-0.8cm}
+       \affaddr{Wikimedia Foundation}\\
+\hspace{-0.8cm}
+       ellery@wikimedia.org
+\alignauthor
+\hspace{-2cm}
+Robert West \\
+\hspace{-2cm}
+       \affaddr{Stanford University}\\
+\hspace{-2cm}
+       west@cs.stanford.edu
+\alignauthor
+\hspace{-3.5cm}
+Leila Zia \\
+\hspace{-3.5cm}
+       \affaddr{Wikimedia Foundation}\\
+\hspace{-3.5cm}
+       leila@wikimedia.org
+\alignauthor
+\hspace{-5cm}
+Jure Leskovec \\
+\hspace{-5cm}
+       \affaddr{Stanford University}\\
+\hspace{-5cm}
+        jure@cs.stanford.edu   
+}
+
+\maketitle
+
+%COMMENT BY LEILA.
+%\note[Bob]{Re: title, I'd suggest not mentioning translation, since our method doesn't rely on translation. Suggestion: \textit{Importing the Important: Growing Wikipedia across Languages via Prioritized Recommendation}}
+
+%\note[Bob]{Let's mark article names by small caps, like this: \cpt{California} (doesn't show properly in this sans-serif font, but see \LaTeX{} source code\dots)}
+
+%\note[Bob]{Let's speak of \WD{} concepts rather than items; it's more expressive.}
+
+%\note[Bob]{Let's define languages as sets of \WD{} concepts, rather than \WP{} articles; \eg, if an concept $c$ is covered by both $S$ and $T$, then we write $c \in S \cap T$. When referring to the language\hyp specific versions, let's use subscripts on the item, \eg, $c_S, c_T$ (capital letters in the subscripts).}
+
+%\note[Bob]{Throughout the paper, we need to be careful how we speak of source--target pairs while not fully focusing on translation only.}
+
+%\note[Dario]{Wikipedians refer to different language editions as ``Wikipedias'', not ``Wikipedia's'', I took the freedom of fixing this throughout the paper.}
+
+
+\begin{abstract}
+\input{000abstract}
+\end{abstract}
+
+
+
+% COMMENT ELLERY
+%You do NOT have to include the ACM Classifiers (Categories & Subject Descriptors --OR-- CCS Concepts) on the first page of your final publication ready version. These will be captured on the submission page only. Please feel free to utilize this space for other content. Kindly read through the updated preparation instructions below
+
+% A category with the (minimum) three required fields
+%\category{H.5.4}{Information Interfaces and Presentation}{Hypertext\slash Hy\-per\-me\-di\-a}[Navigation]
+%% A category including the fourth, optional field follows...
+%\category{D.2.8}{Software Engineering}{Metrics}[complexity measures, performance measures]
+%\terms{Algorithms; Experimentation; Human Factors}
+%\keywords{Wikipedia; Recommendation systems;  Translation}
+
+\section{Introduction}
+\label{sec:intro}
+\input{010intro}
+\vspace{0.2cm}
+%COMMENT BY LEILA.
+%\section{Related work}
+%\label{sec:relatedwork}
+%\input{020relatedwork}
+
+\section{System for recommending missing articles}
+\label{sec:overview}
+\input{025overview}
+
+\subsection{Finding missing articles}
+\label{sec:missing}
+\input{030missing}
+
+\subsection{Ranking missing articles}
+\label{sec:ranking}
+\input{040ranking}
+
+\subsection{Matching editors to articles}
+\label{sec:matching}
+\input{060matching}
+
+\section{Offline Evaluation}
+\label{sec:evaluation}
+\input{0705missing_evaluation}
+\input{071ranking_evaluation}
+\input{072matching_evaluation}
+
+\section{Online Experiment}
+\label{sec:experiment}
+\input{073experiment_evaluation}
+
+\section{Discussion and Related Work}
+\label{sec:discussion}
+\input{080discussion}
+
+\section{Conclusion}
+\label{sec:conclusion}
+\input{090conclusion}
+
+\xhdr{Acknowledgements}
+\input{110acks}
+
+\bibliographystyle{abbrv}
+\bibliography{bibliography}
+
+\appendix
+\input{100editor_and_article_selection}
+
+\end{document}

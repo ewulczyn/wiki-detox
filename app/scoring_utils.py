@@ -13,7 +13,7 @@ currentdir = os.path.dirname(
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-from wikipedia.src.data_generation.diff_utils import remove_date, substitute_patterns, strip_mw, strip_html,pre_sub_patterns,post_sub_patterns
+from src.data_generation.diff_utils import remove_date, substitute_patterns, strip_mw, strip_html,pre_sub_patterns,post_sub_patterns
 
 
 
