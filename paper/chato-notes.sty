@@ -1,0 +1,39 @@
+% Simple package for inserting notes
+% ChaTo - http://www.chato.cl/
+% Wed Aug 19 16:46:46 CEST 2009
+
+\ProvidesPackage{chato-notes}[2009/08/19 ChaTo notes]
+\RequirePackage{color,marvosym}
+
+% Colors
+\definecolor{MyRed}{rgb}{0.6,0.0,0.0} 
+\definecolor{MyBlack}{rgb}{0.1,0.1,0.1} 
+\newcommand{\inred}[1]{{\color{MyRed}\sf\textbf{\textsc{#1}}}}
+
+% Frame
+\newcommand{\frameit}[2]{
+    \begin{center}
+    {\color{MyRed}
+    \framebox[.9\columnwidth][l]{
+        \begin{minipage}{.85\columnwidth}
+        \inred{#1}: {\sf\color{MyBlack}#2}
+        \end{minipage}
+    }\\
+    }
+    \end{center}
+}
+
+\DeclareOption{show}{
+	\newcommand{\note}[2][]{\def\@tmpsig{#1}\frameit{{\Pointinghand} Note}{#2\ifx \@tmpsig \@empty \else \mbox{ --\em #1}\fi}}
+	\newcommand{\todo}[2][]{\def\@tmpsig{#1}\frameit{{\Writinghand} To-do}{#2\ifx \@tmpsig \@empty \else \mbox{ --\em #1}\fi}}
+	\newcommand{\inote}[1]{\inred{$\lceil${{\Pointinghand} }} {\sf #1} \inred{$\rfloor$}}
+	\newcommand{\citemissing}[0]{\inred{[citation]}}
+}
+\DeclareOption{hide}{
+	\newcommand{\note}[2][]{}
+	\newcommand{\todo}[2][]{}
+	\newcommand{\inote}[1]{}
+	\newcommand{\citemissing}[0]{}
+}
+
+\ProcessOptions

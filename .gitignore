@@ -65,3 +65,18 @@ target/
 data/
 *.txt
 .ipynb_checkpoints/
+models/
+
+
+# Latex
+*.aux
+*.bbl
+*.pdf
+*.blg
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# Sublime
+*.sublime-project
+*.sublime-workspace

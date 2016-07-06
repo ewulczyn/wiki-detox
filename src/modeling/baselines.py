@@ -245,7 +245,7 @@ def load_annotations(baseline = False):
         for sample, files in  d.items():
             dfs = []
             for f in files:
-                df = pd.read_csv('../../data/v4_annotated/%s/%s.csv' % (ns,f))
+                df = pd.read_csv('../../data/annotations/%s/%s.csv' % (ns,f))
                 df = df.query('_golden == False')
                 df.index = df.rev_id
                 df['src'] = f

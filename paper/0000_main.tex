@@ -1,4 +1,4 @@
-\documentclass{sig-alternate-2013}
+\documentclass{sig-alternate}
 
 \usepackage{graphicx}
 \usepackage{url}
@@ -111,109 +111,48 @@ Ellery Wulczyn \\
        ellery@wikimedia.org
 \alignauthor
 \hspace{-2cm}
-Robert West \\
+Nithum Thain \\
 \hspace{-2cm}
-       \affaddr{Stanford University}\\
+       \affaddr{Jigsaw}\\
 \hspace{-2cm}
-       west@cs.stanford.edu
+       nthain@google.com
 \alignauthor
 \hspace{-3.5cm}
-Leila Zia \\
+Lucas Dixon \\
 \hspace{-3.5cm}
-       \affaddr{Wikimedia Foundation}\\
+       \affaddr{Jigsaw}\\
 \hspace{-3.5cm}
-       leila@wikimedia.org
-\alignauthor
-\hspace{-5cm}
-Jure Leskovec \\
-\hspace{-5cm}
-       \affaddr{Stanford University}\\
-\hspace{-5cm}
-        jure@cs.stanford.edu   
+       ldixon@google.com  
 }
 
 \maketitle
 
-%COMMENT BY LEILA.
-%\note[Bob]{Re: title, I'd suggest not mentioning translation, since our method doesn't rely on translation. Suggestion: \textit{Importing the Important: Growing Wikipedia across Languages via Prioritized Recommendation}}
-
-%\note[Bob]{Let's mark article names by small caps, like this: \cpt{California} (doesn't show properly in this sans-serif font, but see \LaTeX{} source code\dots)}
-
-%\note[Bob]{Let's speak of \WD{} concepts rather than items; it's more expressive.}
-
-%\note[Bob]{Let's define languages as sets of \WD{} concepts, rather than \WP{} articles; \eg, if an concept $c$ is covered by both $S$ and $T$, then we write $c \in S \cap T$. When referring to the language\hyp specific versions, let's use subscripts on the item, \eg, $c_S, c_T$ (capital letters in the subscripts).}
-
-%\note[Bob]{Throughout the paper, we need to be careful how we speak of source--target pairs while not fully focusing on translation only.}
-
-%\note[Dario]{Wikipedians refer to different language editions as ``Wikipedias'', not ``Wikipedia's'', I took the freedom of fixing this throughout the paper.}
-
-
 \begin{abstract}
-\input{000abstract}
+\input{1000_abstract}
 \end{abstract}
 
 
-
-% COMMENT ELLERY
-%You do NOT have to include the ACM Classifiers (Categories & Subject Descriptors --OR-- CCS Concepts) on the first page of your final publication ready version. These will be captured on the submission page only. Please feel free to utilize this space for other content. Kindly read through the updated preparation instructions below
-
-% A category with the (minimum) three required fields
-%\category{H.5.4}{Information Interfaces and Presentation}{Hypertext\slash Hy\-per\-me\-di\-a}[Navigation]
-%% A category including the fourth, optional field follows...
-%\category{D.2.8}{Software Engineering}{Metrics}[complexity measures, performance measures]
-%\terms{Algorithms; Experimentation; Human Factors}
-%\keywords{Wikipedia; Recommendation systems;  Translation}
-
 \section{Introduction}
 \label{sec:intro}
-\input{010intro}
+\input{2000_introduction}
 \vspace{0.2cm}
-%COMMENT BY LEILA.
-%\section{Related work}
-%\label{sec:relatedwork}
-%\input{020relatedwork}
 
-\section{System for recommending missing articles}
-\label{sec:overview}
-\input{025overview}
+\section{Related work}
+\label{sec:relatedwork}
+\input{3000_related_work}
 
-\subsection{Finding missing articles}
-\label{sec:missing}
-\input{030missing}
-
-\subsection{Ranking missing articles}
-\label{sec:ranking}
-\input{040ranking}
-
-\subsection{Matching editors to articles}
-\label{sec:matching}
-\input{060matching}
-
-\section{Offline Evaluation}
-\label{sec:evaluation}
-\input{0705missing_evaluation}
-\input{071ranking_evaluation}
-\input{072matching_evaluation}
-
-\section{Online Experiment}
-\label{sec:experiment}
-\input{073experiment_evaluation}
-
-\section{Discussion and Related Work}
-\label{sec:discussion}
-\input{080discussion}
 
 \section{Conclusion}
 \label{sec:conclusion}
-\input{090conclusion}
+\input{7000_conclusion}
 
 \xhdr{Acknowledgements}
-\input{110acks}
+\input{8000_acknowledgements}
 
 \bibliographystyle{abbrv}
 \bibliography{bibliography}
 
 \appendix
-\input{100editor_and_article_selection}
+\input{9000_appendix}
 
 \end{document}
