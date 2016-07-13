@@ -101,7 +101,7 @@ def plurality(l):
     s.name = 'y'
     return s
 
-def empirical_dist(l, w = 0.25, index = None):
+def empirical_dist(l, w = 0.0, index = None):
 
     """
     Compute empirical distribution over all classes
