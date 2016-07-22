@@ -228,9 +228,9 @@ def load_annotations(baseline = False):
                 'annotated_random_data_rows_10000_to_20000_raters_10',
     ]
 
-    article_blocked = ['article_onion_layer_5_all_rows_raters_10']
+    article_blocked = ['article_onion_layer_5_all_rows_raters_10',]
 
-    article_random = ['article_random_data_all_rows_raters_10']
+    article_random = ['article_random_data_all_rows_raters_10',]
 
 
     files = {
@@ -266,8 +266,6 @@ def label_and_split(annotations, task, test_size = 0.2):
     for ns, _ in annotations.items():
         data[ns] = {}
         for sample, df in _.items():
-
-            #df = df[:50000]
 
             data[ns][sample] = {}
             comments = df[['clean_diff', 'rev_id', task]].dropna().drop_duplicates('rev_id')['clean_diff']

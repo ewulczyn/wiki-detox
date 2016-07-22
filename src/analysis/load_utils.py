@@ -51,7 +51,6 @@ def augment(df):
     df['year'] = df['rev_timestamp'].apply(lambda x: x.year)
     df['month'] = df['rev_timestamp'].apply(lambda x: x.month)
     df['hour'] = df['rev_timestamp'].apply(lambda x: x.hour)
-    df['pred_recipient'] = (df['pred_recipient_score'] > 0.5).astype(int)
     df['own_page'] = df['user_text'] == df['page_title']
     return df
 
@@ -63,6 +62,26 @@ def load_block_events_and_users():
                     .rename(columns= lambda x: x.split('.')[1])\
                     .assign(timestamp= lambda x: pd.to_datetime(x.timestamp),
                             anon = lambda x: x.user_text.apply(is_ip))
+                            
+                            
+    df_events['year'] = df_events['timestamp'].apply(lambda x: x.year)
+    df_events['month'] = df_events['timestamp'].apply(lambda x: x.month)
+    df_events['hour'] = df_events['timestamp'].apply(lambda x: x.hour)
+
+    df_blocked_user_text = df_events[['user_text']]\
+                            .drop_duplicates()\
+                            .assign(blocked = 1) 
+
+    return df_events, df_blocked_user_text
+
+
+def load_warn_events_and_users():
+    
+    df_events = pd.read_csv('../../data/npa_warnings.tsv', sep = '\t')\
+                    .rename(columns= lambda x: x.split('.')[1])\
+                    .assign(timestamp= lambda x: pd.to_datetime(x.warning_timestamp),
+                            anon = lambda x: x.attacker_user_text.apply(is_ip),
+                            user_text = lambda x: x.attacker_user_text)
                             
                             
     df_events['year'] = df_events['timestamp'].apply(lambda x: x.year)

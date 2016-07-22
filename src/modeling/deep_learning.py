@@ -10,7 +10,7 @@ from sklearn.base import TransformerMixin
 import pandas as pd
 import numpy as np
 
-def make_MLP(layers = [], output_dim = None, input_dim = None, l = 0.0001):
+def make_MLP(layers = [], output_dim = None, input_dim = None, l = 0.0001, softmax = True):
     architecture = [input_dim] + layers + [output_dim]
     # create model
     model = Sequential()
@@ -22,10 +22,14 @@ def make_MLP(layers = [], output_dim = None, input_dim = None, l = 0.0001):
         
     i, o = layers[-1]
     model.add(Dense(input_dim=i,output_dim=o, init='normal', W_regularizer = l2(l)))
-    model.add(Activation("softmax"))
+    if softmax:
+        model.add(Activation("softmax"))
 
     # Compile model
-    model.compile(loss='kullback_leibler_divergence', optimizer='adam', metrics = ['accuracy'])
+    if softmax:
+        model.compile(loss='kullback_leibler_divergence', optimizer='adam', metrics = ['accuracy'])
+    else:
+        model.compile(loss='mse', optimizer='adam', metrics = ['mse'])
     return model
 
 
