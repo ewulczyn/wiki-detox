@@ -104,7 +104,7 @@ class SequenceTransformer(TransformerMixin):
 
 
 
-def apply_transform(data, old_xtype, transformer, new_xtype,  nss = ['user', 'article'], samples = ['random', 'blocked'], splits = ['train', 'test']):
+def apply_transform(data, old_xtype, transformer, new_xtype,  nss = ['user', 'article'], samples = ['random', 'blocked'], splits = ['train', 'dev','test']):
     for ns in nss:
         for sample in samples:
             for split in splits:

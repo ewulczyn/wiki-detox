@@ -6,6 +6,7 @@ from sklearn.metrics import roc_auc_score, f1_score, mean_squared_error
 from math import sqrt
 from sklearn.cross_validation import ShuffleSplit
 from sklearn.preprocessing import label_binarize
+import os
 
 import multiprocessing as mp
 
@@ -208,92 +209,40 @@ def map_aggression_score_to_3class(l):
         return 1
 
 
-def load_annotations(baseline = False):
-
-    
-    user_blocked = [
-                'annotated_onion_layer_5_rows_0_to_5000_raters_20',     #annotated 20 times
-                'annotated_onion_layer_5_rows_0_to_10000',              #annotated 7 times
-                'annotated_onion_layer_5_rows_0_to_10000_raters_3',           #annotated 3 times
-                'annotated_onion_layer_5_rows_10000_to_50526_raters_10',#annotated 10 times
-                'annotated_onion_layer_10_rows_0_to_1000',              #annotated ? times
-                'annotated_onion_layer_20_rows_0_to_1000',              #annotated ? times
-                'annotated_onion_layer_30_rows_0_to_1000',              #annotated ? times
-    ]
-
-    user_random = [
-                'annotated_random_data_rows_0_to_5000_raters_20',
-                'annotated_random_data_rows_5000_to_10000',
-                'annotated_random_data_rows_5000_to_10000_raters_3',
-                'annotated_random_data_rows_10000_to_20000_raters_10',
-    ]
-
-    article_blocked = ['article_onion_layer_5_all_rows_raters_10',]
-
-    article_random = ['article_random_data_all_rows_raters_10',]
-
-
-    files = {
-        'user': {'blocked': user_blocked, 'random': user_random},
-        'article': {'blocked': article_blocked, 'random': article_random}
-    }
+def load_comments_and_labels(task):
+    base_path = '../../data/annotations/split'
+    splits = ['train', 'dev', 'test']
+    nss = ['user', 'article']
+    samples = ['blocked', 'random']
+    dfs = {}
+    for split in splits:
+        path = os.path.join(base_path, split, 'annotations.tsv')
+        df = pd.read_csv(path, sep = '\t')
+        df.index = df.rev_id
+        dfs[split] = df
 
 
     data = {}
-    for ns, d in files.items():
+    for ns in nss:
         data[ns] = {}
-        for sample, files in  d.items():
-            dfs = []
-            for f in files:
-                df = pd.read_csv('../../data/annotations/%s/%s.csv' % (ns,f))
-                df = df.query('_golden == False')
-                df.index = df.rev_id
-                df['src'] = f
-                df['ns'] = ns
-                df['sample'] = sample
-                dfs.append(df)
-            df = pd.concat(dfs)
-            df = tidy_labels(df)
-            df['aggression'] = df['aggression_score'].apply(map_aggression_score_to_3class)
-            data[ns][sample] = df
-
-    return data
-
-
-
-def label_and_split(annotations, task, test_size = 0.2):
-    data = {}
-    for ns, _ in annotations.items():
-        data[ns] = {}
-        for sample, df in _.items():
-
+        for sample in samples:
             data[ns][sample] = {}
-            comments = df[['clean_diff', 'rev_id', task]].dropna().drop_duplicates('rev_id')['clean_diff']
-            labels = df[task].dropna()
-
-            train_idxs, test_idxs = list(ShuffleSplit(len(comments), n_iter = 1, test_size=test_size, random_state = 345))[0]
-            splits = {'train': train_idxs, 'test': test_idxs}
-
-            for split_name, split_idxs in splits.items():
-                data[ns][sample][split_name] = {'x':{}, 'y':{}}
-
-                split_comments = comments.iloc[split_idxs]
-                data[ns][sample][split_name]['x']['comments'] = split_comments
-
-                split_labels = labels.loc[split_comments.index]
-                ed = empirical_dist(split_labels)
-                data[ns][sample][split_name]['y']['empirical_dist'] = ed
-
+            for split in splits:
+                data[ns][sample][split] = {'x':{}, 'y':{}}
+                df = dfs[split].query("ns=='%s' and sample=='%s'" % (ns, sample))
+                comments = df.drop_duplicates(subset='rev_id')['clean_diff']
+                labels = df[task]
+                data[ns][sample][split]['x']['comments'] = comments
+                ed = empirical_dist(labels)
+                data[ns][sample][split]['y']['empirical_dist'] = ed
                 weights = pd.Series(ed.columns, index=ed.columns)
-                data[ns][sample][split_name]['y']['average'] = (ed * weights).sum(1)
-
-                data[ns][sample][split_name]['y']['plurality'] = ed.idxmax(axis = 1)
-
+                data[ns][sample][split]['y']['average'] = (ed * weights).sum(1)
+                data[ns][sample][split]['y']['plurality'] = ed.idxmax(axis = 1)
     return data
 
 
 
-def assemble_data(data, xtype, ytype, nss = ['user', 'article'], samples = ['random', 'blocked'], splits = ['train', 'test']):
+def assemble_data(data, xtype, ytype, nss = ['user', 'article'], samples = ['random', 'blocked'], splits = ['train', 'dev', 'test']):
     xs = []
     ys = []
 
