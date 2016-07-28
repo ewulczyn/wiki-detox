@@ -7,7 +7,9 @@ from scoring_utils import get_comment
 import time
 
 app = Flask(__name__)
-app.debug = True
+app.config.from_pyfile('detox.ini')
+app.debug = app.config['DEBUG']
+
 
 
 @app.route('/')
@@ -84,29 +86,11 @@ def after_request(response):
   return response
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    '--model_paths', required=False,
-    default='./model_paths.json',
-    help='path to json dictionary of model names and paths'
-)
-
-parser.add_argument(
-    '--local', 
-    action="store_true",
-    help='run on local host '
-)
-
-args, unknown = parser.parse_known_args()
-model_data = json.load(open(args.model_paths))
-print(model_data)
+model_data = json.load(open("model_paths.json"))
 
 for k, v in model_data.items():
     v['model'] = joblib.load(v['path'])
 
 
 if __name__ == "__main__":
-    if args.local:
-        app.run(port=5002)
-    else:
-        app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0')
