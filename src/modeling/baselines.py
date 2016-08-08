@@ -49,13 +49,12 @@ def get_baseline(labels, k, agg_function, eval_function, pairs, n_jobs = 8):
     res = p.map(baseline_helper, args)
     p.close()
     p.join()
-    #res = {}
-    #for i, j in pairs:
-    #    res[(i, j)] = baseline_helper(groups, i, j, eval_function)
+    #res = [baseline_helper(arg) for arg in args]
          
     return dict(zip(pairs, res))
 
 def baseline_helper(args):
+    np.random.seed()
 
     groups, i, j, agg_function, eval_function = args
 
@@ -218,6 +217,7 @@ def load_comments_and_labels(task):
     for split in splits:
         path = os.path.join(base_path, split, 'annotations.tsv')
         df = pd.read_csv(path, sep = '\t')
+        #print(df.shape)
         df.index = df.rev_id
         dfs[split] = df
 
@@ -231,6 +231,7 @@ def load_comments_and_labels(task):
                 data[ns][sample][split] = {'x':{}, 'y':{}}
                 df = dfs[split].query("ns=='%s' and sample=='%s'" % (ns, sample))
                 comments = df.drop_duplicates(subset='rev_id')['clean_diff']
+                #print(comments.shape)
                 labels = df[task]
                 data[ns][sample][split]['x']['comments'] = comments
                 ed = empirical_dist(labels)
@@ -250,8 +251,11 @@ def assemble_data(data, xtype, ytype, nss = ['user', 'article'], samples = ['ran
         for sample in samples:
             for split in splits:
                 x = data[ns][sample][split]['x'][xtype]
+                #print(x.shape)
                 y = data[ns][sample][split]['y'][ytype]
+                #print(y.shape)
                 x = x.loc[y.index]
+                #print(x.shape)
                 xs.append(x)
                 ys.append(y)
 
