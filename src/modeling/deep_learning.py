@@ -10,18 +10,18 @@ from sklearn.base import TransformerMixin
 import pandas as pd
 import numpy as np
 
-def make_MLP(layers = [], output_dim = None, input_dim = None, l = 0.0001, softmax = True):
-    architecture = [input_dim] + layers + [output_dim]
+def make_MLP(hidden_layer_sizes = [], output_dim = None, input_dim = None, alpha = 0.0001, softmax = True):
+    architecture = [input_dim] + list(hidden_layer_sizes) + [output_dim]
     # create model
     model = Sequential()
     layers = list(zip(architecture, architecture[1:]))
     
     for i, o in layers[:-1]:
-        model.add(Dense(input_dim=i,output_dim=o, init='normal', W_regularizer = l2(l)))
+        model.add(Dense(input_dim=i,output_dim=o, init='normal', W_regularizer = l2(alpha)))
         model.add(Activation("relu"))
         
     i, o = layers[-1]
-    model.add(Dense(input_dim=i,output_dim=o, init='normal', W_regularizer = l2(l)))
+    model.add(Dense(input_dim=i,output_dim=o, init='normal', W_regularizer = l2(alpha)))
     if softmax:
         model.add(Activation("softmax"))
 

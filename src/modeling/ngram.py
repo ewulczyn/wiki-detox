@@ -1,59 +1,35 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import pearsonr, spearmanr
-
-
-from sklearn.cross_validation import train_test_split, ShuffleSplit
-from sklearn.pipeline import Pipeline
-from sklearn.grid_search import GridSearchCV
-from sklearn.linear_model import LinearRegression
-from sklearn.linear_model import LogisticRegression
-
-from sklearn.linear_model import Ridge
-from sklearn.linear_model import Lasso
-
-from sklearn.svm import LinearSVC
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import TfidfTransformer
-import joblib
-
+pd.options.mode.chained_assignment = None
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-import tensorflow as tf
-import numpy as np
-from sklearn import metrics, cross_validation
-
-from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
 from scipy import interp
-
-from sklearn.calibration import calibration_curve
-from sklearn.metrics import (brier_score_loss, precision_score, recall_score,
-                             f1_score, roc_auc_score)
-from collections import OrderedDict
-
-
-from sklearn.metrics import (explained_variance_score, mean_absolute_error , mean_squared_error, median_absolute_error, r2_score )
-
-from sklearn.preprocessing import label_binarize
-from math import sqrt
-from pprint import pprint
-
 from baselines import *
+from sklearn.metrics import brier_score_loss
+from sklearn.grid_search import RandomizedSearchCV
 
 
-
-def tune (X, y, alg, param_grid, scoring, n_jobs = 1, dev_size = 0.2, verbose = False, refit = False):
+def tune (X_train, y_train, X_dev, y_dev, alg, param_grid, n_iter, scoring, n_jobs = 6, verbose = True):
     """
-    Determine the best model via cross validation. This should be run on training data.
-    """ 
-    # generate train + dev set
-    m = len(X)
-    split = ShuffleSplit(m, n_iter=1, test_size=0.3)
-    
-    # perform gridsearch
-    model = GridSearchCV(cv  = split, estimator = alg, param_grid = param_grid, scoring = scoring, n_jobs=n_jobs, refit=refit)
-    model = model.fit(X,y)
+    Determine the best model via cross validation.
+    """
+    X = np.concatenate([X_train, X_dev])
+    y = np.concatenate([y_train, y_dev])
+
+    # train on train, eval on dev
+    m_train = X_train.shape[0]
+    m_dev = X_dev.shape[0]
+    split = [[np.arange(m_train), np.arange(m_train, m_train + m_dev)]]
+
+    model = RandomizedSearchCV( cv = split,
+                                estimator = alg,
+                                param_distributions = param_grid, 
+                                n_iter = n_iter,
+                                scoring = scoring, 
+                                n_jobs=n_jobs,
+                                refit=False)
+    model.fit(X, y)
     if verbose:
         print("\nBest parameters set found:")
         best_parameters, score, _ = max(model.grid_scores_, key=lambda x: x[1])
@@ -63,6 +39,8 @@ def tune (X, y, alg, param_grid, scoring, n_jobs = 1, dev_size = 0.2, verbose = 
         for params, mean_score, scores in model.grid_scores_:
             print("%0.5f (+/-%0.05f) for %r"
                   % (mean_score, scores.std() / 2, params))
+
+    return model
 
 
 def roc_scorer(clf, X, true):
@@ -135,6 +113,31 @@ def test_custom_cross(optimal_pipeline, data, xtype, ytype, train_params, test_p
             eval_multiclass_classifier(model, X, y)
 
 
+
+def two_class_roc_plotter(y_test, y_score):
+    plt.figure()
+    y_test = one_hot(y_test)
+    fpr, tpr, _ = roc_curve(y_test[:, 1], y_score[:, 1])
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(fpr, tpr, label='area = %.3f' % roc_auc)
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.legend(loc="lower right")
+
+def two_class_precision_recall_plotter(y_test, y_score):
+    plt.figure()
+    y_test = one_hot(y_test)
+    precision, recall, thresholds = precision_recall_curve(y_test[:, 1], y_score[:, 1])
+    plt.plot(thresholds, precision[1:], label='precision')
+    plt.plot(thresholds, recall[1:], label='recall')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('threshold')
+    plt.legend(loc="lower right")
 
 
 

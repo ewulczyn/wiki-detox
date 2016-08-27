@@ -4,10 +4,7 @@ from scipy.stats import pearsonr,spearmanr
 from scipy.stats import entropy as kl
 from sklearn.metrics import roc_auc_score, f1_score, mean_squared_error
 from math import sqrt
-from sklearn.cross_validation import ShuffleSplit
-from sklearn.preprocessing import label_binarize
 import os
-
 import multiprocessing as mp
 
 def get_baseline(labels, k, agg_function, eval_function, pairs, n_jobs = 8):
@@ -199,13 +196,11 @@ def tidy_labels(d):
     d['attack'] = d.is_harassment_or_attack.str.contains('|'.join(classes[1:])).astype(float)
     return d
 
-def map_aggression_score_to_3class(l):
+def map_aggression_score_to_2class(l):
     if l<0.0:
-        return 0
-    if l > 0.0:
-        return 2
-    else:
         return 1
+    if l >= 0.0:
+        return 0
 
 
 def load_comments_and_labels(task):
