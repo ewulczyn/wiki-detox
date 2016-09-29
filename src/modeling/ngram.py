@@ -8,9 +8,56 @@ from scipy import interp
 from baselines import *
 from sklearn.metrics import brier_score_loss
 from sklearn.grid_search import RandomizedSearchCV
+from sklearn.grid_search import ParameterSampler
 
 
-def tune (X_train, y_train, X_dev, y_dev, alg, param_grid, n_iter, scoring, n_jobs = 6, verbose = True):
+
+class RandomizedSearchCVWithDependencies(RandomizedSearchCV):
+    
+    def __init__(self, estimator, param_distributions, n_iter=10, scoring=None,
+                 fit_params=None, n_jobs=1, iid=True, refit=True, cv=None,
+                 verbose=0, pre_dispatch='2*n_jobs', random_state=0,
+                 error_score='raise', dependencies=[]):
+
+        self.dependencies = dependencies
+        
+        super(RandomizedSearchCVWithDependencies, self).__init__(
+            estimator=estimator, param_distributions=param_distributions, 
+            n_iter=n_iter, scoring=scoring, fit_params=fit_params,
+            n_jobs=n_jobs, iid=iid, refit=refit, cv=cv, verbose=verbose,
+            pre_dispatch=pre_dispatch, random_state=random_state, 
+            error_score=error_score,
+            )
+        
+        
+    def fit(self, X, y=None):
+        
+        sampled_params = ParameterSampler(self.param_distributions,
+                                          self.n_iter,
+                                          random_state=self.random_state)
+        
+        sampled_params = list(sampled_params)
+        
+        for p in sampled_params:
+            for a,b in self.dependencies:
+                p[b] = p[a]
+        
+        
+        return self._fit(X, y, sampled_params)
+
+
+
+def tune (X_train,
+           y_train,
+           X_dev,
+           y_dev,
+           alg,
+           param_grid,
+           n_iter,
+           scoring,
+           n_jobs = 6,
+           verbose = True,
+           dependencies=[]):
     """
     Determine the best model via cross validation.
     """
@@ -22,13 +69,14 @@ def tune (X_train, y_train, X_dev, y_dev, alg, param_grid, n_iter, scoring, n_jo
     m_dev = X_dev.shape[0]
     split = [[np.arange(m_train), np.arange(m_train, m_train + m_dev)]]
 
-    model = RandomizedSearchCV( cv = split,
+    model = RandomizedSearchCVWithDependencies( cv = split,
                                 estimator = alg,
                                 param_distributions = param_grid, 
                                 n_iter = n_iter,
                                 scoring = scoring, 
                                 n_jobs=n_jobs,
-                                refit=False)
+                                refit=False,
+                                dependencies=dependencies)
     model.fit(X, y)
     if verbose:
         print("\nBest parameters set found:")
@@ -49,7 +97,7 @@ def roc_scorer(clf, X, true):
 
 def spearman_scorer(clf, X, true):
     pred = clf.predict_proba(X)
-    return multi_class_spearman(true, pred)
+    return multi_class_spearman(true, pred) 
 
 
 def eval_multiclass_classifier(model, X, true, plot = False, verbose = True):
@@ -136,7 +184,8 @@ def two_class_precision_recall_plotter(y_test, y_score):
     plt.plot(thresholds, recall[1:], label='recall')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
-    plt.xlabel('threshold')
+    plt.xlabel('Decision threshold')
+    plt.xlabel('Precision/Recall')
     plt.legend(loc="lower right")
 
 

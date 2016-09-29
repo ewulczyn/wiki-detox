@@ -6,73 +6,96 @@ from sklearn.metrics import roc_auc_score, f1_score, mean_squared_error
 from math import sqrt
 import os
 import multiprocessing as mp
+import dill
 
-def get_baseline(labels, k, agg_function, eval_function, pairs, n_jobs = 8):
 
-    """      
-    Say we have 2k human scores for each comment. For each comment, for
-    all (i,j) <= (k+1),     spit human scores into 2 non-overlapping sets of I and J
-    of size i and j respectively. Compute     correlation between the mean of scores
-    in set I and set J for all comments.     Intuitively,     correlation i,j tells
-    us how good i humans are are predicting the labels of another group of j
-    humans.
 
-    As i increases, we expect to get better predictions and as j increases, we
-    expect to get more predictable labels.
 
-    To figure out how many humans we need to label each question, we should
-    examine the diagonal of the matrix (where i=j) and pick a value of i=j where
-    there are diminishing returns to going further down the diagonal.
 
-    To figure out how hard we should try at building a machine learning model
-    for labels that we got from aggregating j_0 human labels we can check the
-    correlations for different values of i. We can interpret correlation (i,
-    j_0) as how good an "ensemble" of i humans is at predicting the labels.
 
-    So a model that can achieve correlation (1, j_0) is as good as a single
-    human. Also, we would expect that a model should not beat correlation (j_0,
-    j_0). If it does, then it overfit to the group and you should increase j0.
 
-    """
-    
+def get_annotator_ensemble_baseline(annotations, k, agg_function, eval_function, n_t, n_p):
 
-    labels = labels.dropna()
-    groups = labels.groupby(labels.index)
+    assert(n_t + n_p <=k)
+
+    np.random.seed()
+    annotations = annotations.dropna()
+    groups = annotations.groupby(annotations.index)
     groups = [e[1] for e in groups if e[1].shape[0]>=k]
         
-    args = [(groups, i, j, agg_function, eval_function) for i, j in pairs]
+    d_ts = []
+    d_ps = []
+    for g in groups:
+        g = g.iloc[np.random.permutation(len(g))]
+        d_ts.append(g[0:n_t])
+        d_ps.append(g[n_t:(n_t+n_p)])
+       
 
-    p = mp.Pool(min(n_jobs, len(args)))
-    res = p.map(baseline_helper, args)
+    d_t =  pd.concat(d_ts)
+    d_p = pd.concat(d_ps)
+
+    scores_t = agg_function(d_t).values
+    scores_p = agg_function(d_p).values
+
+    return {'score' : eval_function(scores_t, scores_p), 'n_t' : n_t, 'n_p': n_p }
+
+
+
+def get_annotator_ensemble_baseline_helper(args):
+    return get_annotator_ensemble_baseline(*args)
+
+def get_annotator_ensemble_baselines_parallel(args_list, n_jobs = 8):
+
+    """
+    Run function in parallel with args in args_list, function must return dict of results.
+    """
+    p = mp.Pool(min(n_jobs, len(args_list)))
+    res = p.map(get_annotator_ensemble_baseline_helper, args_list)
     p.close()
     p.join()
-    #res = [baseline_helper(arg) for arg in args]
-         
-    return dict(zip(pairs, res))
+    #res = [f(args) for args in args_list]
+    return pd.DataFrame(res)
 
-def baseline_helper(args):
+def get_model_baseline(model_predictions, annotations, k, agg_function, eval_function, n_t):
+
+    """      
+    """
+
+    assert(n_t <= k)
+
     np.random.seed()
+    annotations = annotations.dropna()
+    groups = annotations.groupby(annotations.index)
+    groups = [e[1] for e in groups if e[1].shape[0]>=k]
 
-    groups, i, j, agg_function, eval_function = args
-
-    dis = []
-    djs = []
+    d_ts = []
     for g in groups:
-        if g.shape[0] >= i+j:
-            g = g.iloc[np.random.permutation(len(g))]
-            dis.append(g[0:i])
-            djs.append(g[i:(i+j)])
-        else:
-            print(i,j, g, "WARNING: Comment had less than k labels")
+        g = g.iloc[np.random.permutation(len(g))]
+        d_ts.append(g[0:n_t])
+        
 
-    di =  pd.concat(dis)
-    dj = pd.concat(djs)
+    d_t =  pd.concat(d_ts)
 
-    scores_i = agg_function(di).values
-    scores_j = agg_function(dj).values
+    scores_t = agg_function(d_t)
+    model_predictions = model_predictions.loc[scores_t.index]
 
-    return eval_function(scores_i,scores_j)
+    return {'score' : eval_function(scores_t.values, model_predictions.values), 'n_t' : n_t }
+ 
 
+def get_model_baseline_helper(args):
+    return get_model_baseline(*args)
+
+def get_model_baselines_parallel(args_list, n_jobs = 8):
+
+    """
+    Run function in parallel with args in args_list, function must return dict of results.
+    """
+    p = mp.Pool(min(n_jobs, len(args_list)))
+    res = p.map(get_model_baseline_helper, args_list)
+    p.close()
+    p.join()
+    #res = [f(args) for args in args_list]
+    return pd.DataFrame(res)
 
 
 # Aggregation Functions
@@ -205,7 +228,7 @@ def map_aggression_score_to_2class(l):
 
 def load_comments_and_labels(task):
     base_path = '../../data/annotations/split'
-    splits = ['train', 'dev', 'test']
+    splits =  ['train', 'dev', 'test', 'baseline']
     nss = ['user', 'article']
     samples = ['blocked', 'random']
     dfs = {}
@@ -213,6 +236,7 @@ def load_comments_and_labels(task):
         path = os.path.join(base_path, split, 'annotations.tsv')
         df = pd.read_csv(path, sep = '\t')
         #print(df.shape)
+        #print(len(df['rev_id'].unique()))
         df.index = df.rev_id
         dfs[split] = df
 
@@ -231,6 +255,7 @@ def load_comments_and_labels(task):
                 data[ns][sample][split]['x']['comments'] = comments
                 ed = empirical_dist(labels)
                 data[ns][sample][split]['y']['empirical_dist'] = ed
+                data[ns][sample][split]['y']['one_hot'] = ed.apply(lambda x: (x > (1.0 / ed.shape[1])).astype(int))
                 weights = pd.Series(ed.columns, index=ed.columns)
                 data[ns][sample][split]['y']['average'] = (ed * weights).sum(1)
                 data[ns][sample][split]['y']['plurality'] = ed.idxmax(axis = 1)
@@ -254,7 +279,11 @@ def assemble_data(data, xtype, ytype, nss = ['user', 'article'], samples = ['ran
                 xs.append(x)
                 ys.append(y)
 
-    return pd.concat(xs).values, pd.concat(ys).values
+    x = pd.concat(xs).values
+    #print(x.shape)
+    y = pd.concat(ys).values
+    #print(y.shape)
+    return x, y
 
 
 
