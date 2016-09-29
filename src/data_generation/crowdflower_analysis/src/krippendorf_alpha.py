@@ -16,7 +16,7 @@ def make_coincidence_matrix(df, columns):
     n = df.shape[0]
     num_cols = len(columns)
     o = pd.DataFrame(np.zeros((num_cols,num_cols)), index = columns, columns=columns)
-    for i in xrange(n):
+    for i in range(n):
         o = add_row_to_coincidence(o, df[i:i+1], columns)
     return o
 
