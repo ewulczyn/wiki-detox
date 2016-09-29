@@ -1,7 +1,7 @@
 import keras
 import keras.wrappers
 import keras.wrappers.scikit_learn
-
+import copy
 import joblib
 import os
 
@@ -14,18 +14,17 @@ def load_sklearn_pipeline(directory, name):
 def save_keras_pipeline(pipeline, directory, name):
     # save classifier
     clf = pipeline.steps[-1][1]
-    # save classifier
-    clf.model.save(os.path.join(directory, '%s_clf.h5' % name))
-    # save feature extractor
-    pipeline.steps = pipeline.steps[:-1]
+    keras_model = clf.model
+    keras_model.save(os.path.join(directory, '%s_clf.h5' % name))
+    # save pipeline, without model
+    clf.model = None
     joblib.dump(pipeline, os.path.join(directory, '%s_extractor.pkl' % name))
+    clf.model = keras_model
          
 def load_keras_pipeline(directory, name):
-    clf_raw = keras.models.load_model(os.path.join(directory, '%s_clf.h5' % name))
-    clf = keras.wrappers.scikit_learn.KerasClassifier(build_fn=clf_raw)
-    clf.model = clf_raw
+    model = keras.models.load_model(os.path.join(directory, '%s_clf.h5' % name))
     pipeline = joblib.load(os.path.join(directory, '%s_extractor.pkl' % name))
-    pipeline.steps.append(('clf', clf))
+    pipeline.steps[-1][1].model = model
     return pipeline
 
 def save_pipeline(pipeline, directory, name):
