@@ -266,7 +266,7 @@ def calibration_curve_plotter(y_test, prob_pos, n_bins = 10):
     bins = np.linspace(0., 1. , n_bins + 1) 
     binids = np.digitize(prob_pos, bins) - 1
     df['Bin center'] = bins[binids] + .5/n_bins
-    df[''] = 'Model calibration: (%1.3f)' % brier
+    df[''] = 'Model calibration: (%1.5f)' % brier
     o = bins + .5/n_bins
 
     df2 = pd.DataFrame({'true': o, 'Bin center': o})

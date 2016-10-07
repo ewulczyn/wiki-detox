@@ -16,6 +16,7 @@ References:
 http://machinelearningmastery.com/sequence-classification-lstm-recurrent-neural-networks-python-keras/
 """
 
+
 def make_mlp(hidden_layer_sizes = [], output_dim = None, input_dim = None, alpha = 0.0001, softmax = True):
     architecture = [input_dim] + list(hidden_layer_sizes) + [output_dim]
     # create model
