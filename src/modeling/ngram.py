@@ -176,6 +176,23 @@ def two_class_roc_plotter(y_test, y_score):
     plt.ylabel('True Positive Rate')
     plt.legend(loc="lower right")
 
+
+def two_class_fpr_tpr_plotter(y_test, y_score):
+    plt.figure()
+    y_test = one_hot(y_test)
+    fpr, tpr, thresholds = roc_curve(y_test[:, 1], y_score[:, 1])
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(thresholds, fpr, label='FPR')
+    plt.plot(thresholds, tpr, label='TPR')
+
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('Threshold')
+    plt.ylabel('FPR/TPR')
+    plt.legend(loc="lower right")
+
 def two_class_precision_recall_plotter(y_test, y_score):
     plt.figure()
     y_test = one_hot(y_test)
@@ -188,7 +205,42 @@ def two_class_precision_recall_plotter(y_test, y_score):
     plt.xlabel('Precision/Recall')
     plt.legend(loc="lower right")
 
+def f1(p, r):
+    return 2 * ((p*r)/(p+r))
 
+def two_class_combo_plotter(y_test, y_score):
+    plt.figure()
+    y_test = one_hot(y_test)
+    fpr, tpr, thresholds = roc_curve(y_test[:, 1], y_score[:, 1])
+
+    for i,t in enumerate(thresholds):
+        if t < 0.425:
+            print(t, fpr[i], tpr[i])
+            break
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(thresholds, fpr, label='FPR')
+    plt.plot(thresholds, tpr, label='TPR / Recall')
+
+
+    precision, recall, thresholds = precision_recall_curve(y_test[:, 1], y_score[:, 1])
+
+    for i,t in enumerate(thresholds):
+        if t > 0.425:
+            print(t, precision[i], recall[i])
+            break
+
+    plt.plot(thresholds, precision[1:], label='Precision')
+
+    plt.plot(thresholds, [f1(precision[i], recall[i]) for i in range(len(thresholds))], label='F1')
+
+
+
+    plt.plot([0.408] * 100, np.arange(0, 1, 0.01), 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('Threshold')
+    plt.legend(loc="lower right")
 
 def multi_class_roc_plotter(y_test, y_score, plot = True):
     """

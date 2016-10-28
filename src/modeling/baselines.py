@@ -110,7 +110,7 @@ def remove_na(l):
 
 def plurality(l):
     """
-    Take the most common label from all labels with the same rev_id
+    Take the most common label from all labels with the same rev_id.
     """
     s = l.groupby(l.index).apply(lambda x:x.value_counts().index[0])
     s.name = 'y'
