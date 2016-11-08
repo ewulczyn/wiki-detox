@@ -96,6 +96,8 @@ model_data = json.load(open("model_paths.json"))
 for k, v in model_data.items():
     model = load_pipeline('./models', v['name'])
     v['model'] = model
+    print(model.predict_proba(['fuck']))
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
