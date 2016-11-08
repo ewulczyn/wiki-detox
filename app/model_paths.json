@@ -1,1 +1,1 @@
-{"attack": {"path": "models/recipient_ngram.pkl", "classes": ["not attack", "attack"]}, "aggression": {"path": "models/aggression_ngram.pkl", "classes": ["aggressive", "neutral", "friendly"]}}
+{"attack": {"name": "attack_linear_char_oh", "classes": ["not attack", "attack"]}, "aggression": {"name": "aggression_linear_char_oh", "classes": ["not aggressive", "aggressive"]}}

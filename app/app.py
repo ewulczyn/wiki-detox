@@ -6,6 +6,11 @@ import json
 from scoring_utils import get_comment
 import time
 
+import sys
+sys.path.append(os.path.abspath('../src/modeling'))
+from serialization import load_pipeline
+
+
 app = Flask(__name__)
 app.config.from_pyfile('detox.ini')
 app.debug = app.config['DEBUG']
@@ -89,8 +94,8 @@ def after_request(response):
 model_data = json.load(open("model_paths.json"))
 
 for k, v in model_data.items():
-    v['model'] = joblib.load(v['path'])
-
+    model = load_pipeline('./models', v['name'])
+    v['model'] = model
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
