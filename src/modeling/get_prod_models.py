@@ -10,6 +10,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from keras.wrappers.scikit_learn import KerasClassifier
 from serialization import save_pipeline, load_pipeline
+from sklearn.linear_model import LogisticRegression
+import numpy as np
 
 """
 python get_prod_models.py --task attack --model_dir ../../app/models 
@@ -56,19 +58,46 @@ def train_model(X, y, model_type, ngram_type, label_type):
     assert(model_type in ['linear', 'mlp'])
     assert(ngram_type in ['word', 'char'])
 
-    if label_type == 'oh':
-        y = one_hot(y)
 
-    clf = Pipeline([
-        ('vect', CountVectorizer()),
-        ('tfidf', TfidfTransformer()),
-        ('to_dense', DenseTransformer()),
-        ('clf', KerasClassifier(build_fn=make_mlp, output_dim = y.shape[1], verbose=False)),
-    ])
-    cv_results = pd.read_csv('cv_results.csv')
-    query = "model_type == '%s' and ngram_type == '%s' and label_type == '%s'" % (model_type, ngram_type, label_type)
-    params = cv_results.query(query)['best_params'].iloc[0]
-    params = json.loads(params)
+    # tensorflow models aren't fork safe, which means they can't be served via uwsgi
+    # as work around, we can serve a pure sklearn model
+    # we should be able to find another fix
+
+    if label_type == 'oh' and model_type == 'linear':
+
+        y = np.argmax(y, axis = 1)
+
+        clf = Pipeline([
+            ('vect', CountVectorizer()),
+            ('tfidf', TfidfTransformer()),
+            ('clf', LogisticRegression()),
+        ])
+
+        params = {
+            'vect__max_features': 10000, 
+            'vect__ngram_range': (1,5),  
+            'vect__analyzer' : ngram_type,
+            'tfidf__sublinear_tf' : True,
+            'tfidf__norm' :'l2',
+            'clf__C' : 10,
+        }
+
+    else:
+
+        if label_type == 'oh':
+            y = one_hot(y)
+
+
+        clf = Pipeline([
+            ('vect', CountVectorizer()),
+            ('tfidf', TfidfTransformer()),
+            ('to_dense', DenseTransformer()),
+            ('clf', KerasClassifier(build_fn=make_mlp, output_dim = y.shape[1], verbose=False)),
+        ])
+        cv_results = pd.read_csv('cv_results.csv')
+        query = "model_type == '%s' and ngram_type == '%s' and label_type == '%s'" % (model_type, ngram_type, label_type)
+        params = cv_results.query(query)['best_params'].iloc[0]
+        params = json.loads(params)
 
     return clf.set_params(**params).fit(X,y)
 
@@ -86,7 +115,7 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
 
     print("Downloading Data")
-    download_training_data(args['data_dir'])
+    #download_training_data(args['data_dir'])
 
     print("Parsing Data")
     X, y = parse_training_data(args['data_dir'], args['task'])

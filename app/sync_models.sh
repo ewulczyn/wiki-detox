@@ -6,15 +6,16 @@ https://wikitech.wikimedia.org/wiki/Help:Tool_Labs/Web/Kubernetes#python_.28uwsg
 
 
 
-scp -r /Users/ellerywulczyn/detox/data/figshare/*.pkl.* ewulczyn@dev.tools.wmflabs.org:/home/ewulczyn
+
+scp -i ~/.ssh/private_key -r /Users/ellerywulczyn/detox/app/models/attack_linear_char_oh_pipeline.pkl ewulczyn@dev.tools.wmflabs.org:/home/ewulczyn/models/
+scp -i ~/.ssh/private_key -r /Users/ellerywulczyn/detox/app/models/aggression_linear_char_oh_pipeline.pkl ewulczyn@dev.tools.wmflabs.org:/home/ewulczyn/models/
 
 
 tool
 
-cp 2016-03-01_2016-03-07_wikidata_100 /data/project/detox
+cp  models/* /data/project/detox/models
 
 become detox
 
-take models
 
-mv models /data/project/detox/www/python/detox/app/models/
+mv  models/* /data/project/detox/www/python/detox/app/models
