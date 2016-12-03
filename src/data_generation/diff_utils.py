@@ -20,11 +20,23 @@ months = ['January',
           'October',
           'November',
           'December',
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
         ]
 
 
 month_or = '|'.join(months)
-date_p = re.compile('\d\d:\d\d, \d?\d (%s) \d\d\d\d \(UTC\)' % month_or)
+date_p = re.compile('\d\d:\d\d,( \d?\d)? (%s)( \d?\d)?,? \d\d\d\d (\(UTC\))?' % month_or)
     
 def remove_date(comment):
     return re.sub(date_p , '', comment )
@@ -34,10 +46,16 @@ def remove_date(comment):
 pre_sub_patterns = [
                     ('\[\[Image:.*?\]\]', ''),
                     ('<!-- {{blocked}} -->', ''),
-                    ('NEWLINE', '\n'),
                     ('\[\[File:.*?\]\]', ''),
-                    ('\[\[User:.*?\|.*?\]\]', ''),
-                    ('\(\[\[User talk:.*?\|talk\]\]\)', ''),
+                    ('\[\[User:.*?\]\]', ''),
+                    ('\[\[user:.*?\]\]', ''),
+                    ('\(?\[\[User talk:.*?\]\]\)?', ''),
+                    ('\(?\[\[user talk:.*?\]\]\)?', ''),
+                    ('\(?\[\[User Talk:.*?\]\]\)?', ''),
+                    ('\(?\[\[User_talk:.*?\]\]\)?', ''),
+                    ('\(?\[\[user_talk:.*?\]\]\)?', ''),
+                    ('\(?\[\[User_Talk:.*?\]\]\)?', ''),
+                    ('\(?\[\[Special:Contributions.*?\]\]\)?', ''),
                    ]
 
 post_sub_patterns = [
@@ -63,6 +81,15 @@ def strip_mw(s):
         s = mwparserfromhell.parse(s).strip_code()
     except:
         pass
+    return s
+
+
+def clean_comment(s):
+    s = remove_date(s)
+    s = substitute_patterns(s, pre_sub_patterns)
+    s = strip_mw(s)
+    s = strip_html(s)
+    s = substitute_patterns(s, post_sub_patterns)
     return s
 
 

@@ -4,16 +4,15 @@ source ~/env/3.4/bin/activate
 
 
 
-name=article_talk
+name=user_talk
+namespaces=3
 day=20160113
-namespaces=1
-
-
 
 json_dir=/srv/ellery/${name}_diffs_json
+tsv_dir=/srv/public-datasets/enwiki/${name}_diffs_tsv
 
+__rm -rf ${json_dir}
 mkdir ${json_dir}
-
 nice mwdiffs dump2diffs \
 /mnt/data/xmldatadumps/public/enwiki/${day}/enwiki-${day}-pages-meta-history*.xml*.bz2 \
 --config ~//mwdiff.yaml \
@@ -23,21 +22,28 @@ nice mwdiffs dump2diffs \
 --verbose 
 
 
-tsv_dir=/srv/public-datasets/enwiki/${name}_diffs_tsv
-
+rm -rf ${tsv_dir}
+mkdir ${tsv_dir}
 nice python ~/mwdiffs_to_tsv.py \
 --path_glob ${json_dir}/enwiki-${day}-pages-meta-history\*.bz2  \
 --output_dir ${tsv_dir}
 
 
-rsync -avzh stat1003.eqiad.wmnet:/srv/public-datasets/enwiki/${name}_diffs_tsv ~/talk_page_abuse/wikipedia/data
+localhost
+rsync -avzh stat1003.eqiad.wmnet:/srv/public-datasets/enwiki/${name}_diffs_tsv ~/detox/data
+rsync -avzh ~/detox/data/${name}_diffs_tsv stat1002.eqiad.wmnet:/home/ellery/detox/data
 
-rsync -avzh ~/talk_page_abuse/wikipedia/data/${name}_diffs_tsv stat1002.eqiad.wmnet:/home/ellery/talk_page_abuse/wikipedia/data
 
-cd ~/talk_page_abuse/wikipedia/data/${name}_diffs_tsv
 
+
+stat2
+
+ns=user
+cd ~/detox/data/${ns}_talk_diffs_tsv
 bzip2 -d *.bz2
 
 cd ..
 
-hadoop fs -copyFromLocal ${name}_diffs_tsv /user/ellery/${name}_diffs_tsv
+hadoop fs -mkdir /user/ellery/talk_diff_external
+hadoop fs -rm -r -f /user/ellery/talk_diff_external/ns=${ns}
+hadoop fs -copyFromLocal ${ns}_talk_diffs_tsv /user/ellery/talk_diff_external/ns=${ns}

@@ -1,3 +1,6 @@
+SET mapreduce.job.queuename=priority;
+
+
 DROP TABLE IF EXISTS article_talk_diff_no_bot_sample;
 CREATE TABLE article_talk_diff_no_bot_sample
 ROW FORMAT DELIMITED
@@ -90,3 +93,5 @@ FROM
 WHERE ns = 'article'
 ORDER BY RAND()
 LIMIT 1000000;
+
+

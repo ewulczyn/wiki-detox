@@ -19,17 +19,18 @@ nice python ~/mwdiffs_to_tsv.py \
 
 """
 
-def clean(s):
-    s = s.replace('\t', 'TAB')
-    s = s.replace('\n', 'NEWLINE')
-    s = s.replace("'", 'SQ ')
-    s = s.replace("""""", 'DQ ')
+def replace_special_chars(s):
+    # remove our field delimiter, line terminator
+    # replace single quotes and double quotes with `
+    s = s.replace('\t', 'TAB_TOKEN')
+    s = s.replace('\n', 'NEWLINE_TOKEN')
+    s = s.replace('"', '`')
     return s
 
 def get_features(obj):
     f = {}
     if 'comment' in obj:
-        f['rev_comment'] = clean(obj['comment'])
+        f['rev_comment'] = replace_special_chars(obj['comment'])
         
     f['insert_only'] = 1
     if 'diff' in obj:
@@ -39,7 +40,7 @@ def get_features(obj):
                     if 'tokens' in e:
                         insertion = ''.join(e['tokens'])
                         if len(insertion) > 0:
-                            f['insertion'] = clean(insertion)
+                            f['insertion'] = replace_special_chars(insertion)
                 else:
                     f['insert_only'] = 0
     if 'id' in obj:
@@ -49,7 +50,7 @@ def get_features(obj):
         if 'id' in obj['page']:
             f['page_id'] = obj['page']['id']
         if 'title' in obj['page']:
-            f['page_title'] = clean(obj['page']['title'])
+            f['page_title'] = replace_special_chars(obj['page']['title'])
             
     if 'timestamp' in obj:
         f['rev_timestamp'] = obj['timestamp']
@@ -59,7 +60,7 @@ def get_features(obj):
         if 'id' in obj['user']:
             f['user_id'] = obj['user']['id']
         if 'text' in obj['user']:
-            f['user_text'] = clean(obj['user']['text'])
+            f['user_text'] = replace_special_chars(obj['user']['text'])
     return f
 
 
