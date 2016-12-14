@@ -1,0 +1,55 @@
+SET mapreduce.job.queuename=priority;
+
+
+# edits per registered user per day per namespace in 2015
+# consider using days active
+# consider using bytes added
+
+
+
+DROP TABLE IF EXISTS daily_edit_counts;
+CREATE TABLE daily_edit_counts
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n' 
+STORED AS TEXTFILE
+AS SELECT
+  user_id,
+  user_text,
+  day,
+  ns, 
+  COUNT(*) AS n
+FROM (
+  SELECT
+    rev_user AS user_id,
+    rev_user_text AS user_text,
+    SUBSTRING(rev_timestamp, 1, 8) AS day,
+    page_namespace AS ns
+  FROM
+    revision r, page p
+  WHERE
+    r.rev_page == p.page_id
+    AND SUBSTRING(rev_timestamp, 1, 4) in ('2015')
+    AND rev_user != 0
+  ) a
+GROUP BY
+  user_id,
+  user_text,
+  day,
+  ns;
+
+# registration dates for users who made at least one edit in any namespace in 2015
+
+DROP TABLE IF EXISTS user_registration;
+CREATE TABLE user_registration
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+AS SELECT
+ u.*
+FROM
+  user u
+JOIN
+  (SELECT DISTINCT user_text FROM daily_edit_counts) m
+ON u.user_name = m.user_text;
