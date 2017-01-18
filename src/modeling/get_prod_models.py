@@ -1,6 +1,6 @@
 import argparse
 import os, sys
-import requests
+import urllib
 import json
 import pandas as pd
 from baselines import one_hot, empirical_dist
@@ -14,44 +14,85 @@ from sklearn.linear_model import LogisticRegression
 import numpy as np
 
 """
+USAGE EXAMPLE:
 python get_prod_models.py --task attack --model_dir ../../app/models 
 python get_prod_models.py --task aggression --model_dir ../../app/models 
 """
 
+# Figshare URLs for downloading training data
+ATTACK_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7038044' 
+ATTACK_ANNOTATIONS_URL = 'https://ndownloader.figshare.com/files/7383751'
+AGGRESSION_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7038038' 
+AGGRESSION_ANNOTATIONS_URL = 'https://ndownloader.figshare.com/files/7383748'
 
-COMMENTS_URL = 'https://ndownloader.figshare.com/files/6703926'
-LABELS_URL = 'https://ndownloader.figshare.com/files/6703923'
-COMMENTS_FILE = 'crowd_annotated_comments.tsv'
-LABELS_FILE = 'crowd_annotations.tsv'
+# CSV of optimal  hyper-parameters for each model architecture
 CV_RESULTS = 'cv_results.csv'
 
 
 
-
-
 def download_file(url, fname):
-    r = requests.get(url, stream=True)
-    with open(fname, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=1024): 
-            if chunk: # filter out keep-alive new chunks
-                f.write(chunk)
+    """
+    Helper function for downloading a file to disk
+    """
+    urllib.request.urlretrieve(url, fname)
 
+def download_training_data(data_dir, task):
 
-def download_training_data(data_dir):
-    download_file(COMMENTS_URL, os.path.join(data_dir, COMMENTS_FILE))
-    download_file(LABELS_URL, os.path.join(data_dir, LABELS_FILE))
+    """
+    Downloads comments and labels for task
+    """
+
+    COMMENTS_FILE = "%s_annotated_comments.tsv" % task
+    LABELS_FILE = "%s_annotations.tsv" % task
+
+    if task == "attack":
+        download_file(ATTACK_ANNOTATED_COMMENTS_URL,
+                      os.path.join(data_dir, COMMENTS_FILE))
+        download_file(ATTACK_ANNOTATIONS_URL, os.path.join(data_dir,
+                      LABELS_FILE))
+    elif task == "aggression":
+        download_file(AGGRESSION_ANNOTATED_COMMENTS_URL,
+                      os.path.join(data_dir, COMMENTS_FILE))
+        download_file(AGGRESSION_ANNOTATIONS_URL,
+                      os.path.join(data_dir, LABELS_FILE))
+    else:
+        print("No training data for task: ", task)
+
 
 
 def parse_training_data(data_dir, task):
+
+    """
+    Computes labels from annotations and aligns comments and labels for training
+    """
+
+    COMMENTS_FILE = "%s_annotated_comments.tsv" % task
+    LABELS_FILE = "%s_annotations.tsv" % task
+
     comments = pd.read_csv(os.path.join(data_dir, COMMENTS_FILE), sep = '\t', index_col = 0)
+    # remove special newline and tab tokens
+
+    comments['comment'] = comments['comment'].apply(lambda x: x.replace("NEWLINE_TOKEN", " "))
+    comments['comment'] = comments['comment'].apply(lambda x: x.replace("TAB_TOKEN", " "))
+
+
     annotations = pd.read_csv(os.path.join(data_dir, LABELS_FILE),  sep = '\t', index_col = 0)
     labels = empirical_dist(annotations[task])
+
     X = comments.sort_index()['comment'].values
     y = labels.sort_index().values
+
     assert(X.shape[0] == y.shape[0])
     return X, y
 
+
 def train_model(X, y, model_type, ngram_type, label_type):
+    """
+    Trains a model with the specified architecture. Note that the
+    classifier is a Sklearn model when setting label_type == 'oh'
+    and model_type == 'linear'. Otherwise the classifier is a
+    Keras model. The distinction is important for serialization.
+    """
 
 
     assert(label_type in ['oh', 'ed'])
@@ -115,7 +156,7 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
 
     print("Downloading Data")
-    #download_training_data(args['data_dir'])
+    download_training_data(args['data_dir'], args['task'])
 
     print("Parsing Data")
     X, y = parse_training_data(args['data_dir'], args['task'])

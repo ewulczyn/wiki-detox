@@ -1,7 +1,7 @@
 SET mapreduce.job.queuename=priority;
 
 
-# edits per registered user per day per namespace in 2015
+# edits per registered user per day per namespace 
 # consider using days active
 # consider using bytes added
 
@@ -29,7 +29,7 @@ FROM (
     revision r, page p
   WHERE
     r.rev_page == p.page_id
-    AND SUBSTRING(rev_timestamp, 1, 4) in ('2015')
+    -- AND SUBSTRING(rev_timestamp, 1, 4) in ('2015')
     AND rev_user != 0
   ) a
 GROUP BY
@@ -38,7 +38,7 @@ GROUP BY
   day,
   ns;
 
-# registration dates for users who made at least one edit in any namespace in 2015
+# registration dates for users who made at least one edit in any namespace
 
 DROP TABLE IF EXISTS user_registration;
 CREATE TABLE user_registration
