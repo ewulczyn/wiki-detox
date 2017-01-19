@@ -17,6 +17,8 @@ import numpy as np
 USAGE EXAMPLE:
 python get_prod_models.py --task attack --model_dir ../../app/models 
 python get_prod_models.py --task aggression --model_dir ../../app/models 
+python get_prod_models.py --task toxicity --model_dir ../../app/models 
+
 """
 
 # Figshare URLs for downloading training data
@@ -24,7 +26,8 @@ ATTACK_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7038044'
 ATTACK_ANNOTATIONS_URL = 'https://ndownloader.figshare.com/files/7383751'
 AGGRESSION_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7038038' 
 AGGRESSION_ANNOTATIONS_URL = 'https://ndownloader.figshare.com/files/7383748'
-
+TOXICITY_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7394542'
+TOXICITY_ANNOTATIONS_URL = 'https://ndownloader.figshare.com/files/7394539'
 # CSV of optimal  hyper-parameters for each model architecture
 CV_RESULTS = 'cv_results.csv'
 
@@ -54,6 +57,11 @@ def download_training_data(data_dir, task):
         download_file(AGGRESSION_ANNOTATED_COMMENTS_URL,
                       os.path.join(data_dir, COMMENTS_FILE))
         download_file(AGGRESSION_ANNOTATIONS_URL,
+                      os.path.join(data_dir, LABELS_FILE))
+    elif task == "toxicity":
+        download_file(TOXICITY_ANNOTATED_COMMENTS_URL,
+                      os.path.join(data_dir, COMMENTS_FILE))
+        download_file(TOXICITY_ANNOTATIONS_URL,
                       os.path.join(data_dir, LABELS_FILE))
     else:
         print("No training data for task: ", task)
@@ -149,7 +157,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir',   default = '/tmp',   help ='directory for saving training data')
     parser.add_argument('--model_dir',  default = '/tmp',   help ='directory for saving model' )
-    parser.add_argument('--task',       default = 'attack', help = 'either attack or aggression')
+    parser.add_argument('--task',       default = 'attack', help = 'either attack, aggression or toxicity')
     parser.add_argument('--model_type', default = 'linear', help = 'either linear or mlp')
     parser.add_argument('--ngram_type', default = 'char',   help = 'either word or char')
     parser.add_argument('--label_type', default = 'oh' ,    help = 'either oh or ed')
