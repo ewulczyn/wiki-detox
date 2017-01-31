@@ -1,14 +1,13 @@
 SET mapreduce.job.queuename=priority;
 
 
-# edits per registered user per day per namespace 
-# consider using days active
-# consider using bytes added
+-- edits per registered user per day per namespace 
 
 
 
-DROP TABLE IF EXISTS daily_edit_counts;
-CREATE TABLE daily_edit_counts
+
+DROP TABLE IF EXISTS enwiki.daily_edit_counts;
+CREATE TABLE enwiki.daily_edit_counts
 ROW FORMAT DELIMITED
   FIELDS TERMINATED BY '\t'
   LINES TERMINATED BY '\n' 
@@ -26,10 +25,9 @@ FROM (
     SUBSTRING(rev_timestamp, 1, 8) AS day,
     page_namespace AS ns
   FROM
-    revision r, page p
+    enwiki.revision r, enwiki.page p
   WHERE
     r.rev_page == p.page_id
-    -- AND SUBSTRING(rev_timestamp, 1, 4) in ('2015')
     AND rev_user != 0
   ) a
 GROUP BY
@@ -38,18 +36,82 @@ GROUP BY
   day,
   ns;
 
-# registration dates for users who made at least one edit in any namespace
+-- registration dates for users who made at least one edit in any namespace
 
-DROP TABLE IF EXISTS user_registration;
-CREATE TABLE user_registration
+DROP TABLE IF EXISTS enwiki.user_registration;
+CREATE TABLE enwiki.user_registration
 ROW FORMAT DELIMITED
   FIELDS TERMINATED BY '\t'
   LINES TERMINATED BY '\n'
 STORED AS TEXTFILE
 AS SELECT
- u.*
+ user_id,
+ user_text,
+ user_registration,
+ SUBSTRING(user_registration, 1, 8) AS registration_day
 FROM
-  user u
+  enwiki.user u
 JOIN
-  (SELECT DISTINCT user_text FROM daily_edit_counts) m
-ON u.user_name = m.user_text;
+  (SELECT DISTINCT user_text FROM enwiki.daily_edit_counts) m
+ON u.user_name = m.user_text
+WHERE
+  user_registration IS NOT NULL;
+
+
+
+-- first edit dates for users who made at least one edit in any namespace
+
+DROP TABLE IF EXISTS enwiki.user_first_edit;
+CREATE TABLE enwiki.user_first_edit
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+AS SELECT
+    user_id,
+    user_text,
+    day as first_edit_day,
+    COUNT(*) AS num_first_day_namespaces
+FROM
+  (SELECT
+    e.*,
+    RANK() OVER  (PARTITION BY user_id ORDER BY day ASC) AS rank 
+  FROM
+    enwiki.daily_edit_counts e
+  ) a
+WHERE
+  rank == 1
+GROUP BY
+  user_id,
+  user_text,
+  day
+;
+
+
+
+
+-- get combined table of registration and first edit days
+
+DROP TABLE IF EXISTS enwiki.user_start;
+CREATE TABLE enwiki.user_start
+ROW FORMAT DELIMITED
+  FIELDS TERMINATED BY '\t'
+  LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+AS SELECT
+  r.user_id,
+  r.user_text,
+  r.registration_day,
+  f.first_edit_day,
+  f.num_first_day_namespaces
+FROM
+  enwiki.user_first_edit f
+JOIN
+  enwiki.user_registration r
+ON (f.user_id = r.user_id AND f.user_text = r.user_text)
+WHERE
+  r.registration_day <= f.first_edit_day 
+;
+
+
+ 
