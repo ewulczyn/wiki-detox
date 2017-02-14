@@ -16,7 +16,7 @@ import numpy as np
 """
 USAGE EXAMPLE:
 python get_prod_models.py --task attack --model_dir ../../app/models 
-python get_prod_models.py --task recipient_attack --model_dir ../../app/models 
+python wiki-detox/src/modeling/get_prod_models.py --task recipient_attack --model_dir ../../app/models 
 python get_prod_models.py --task aggression --model_dir ../../app/models 
 python get_prod_models.py --task toxicity --model_dir ../../app/models 
 
