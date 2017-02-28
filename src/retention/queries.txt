@@ -10,7 +10,6 @@ ROW FORMAT DELIMITED
 STORED AS TEXTFILE
 AS SELECT
   user_id,
-  user_text,
   day,
   ns, 
   COUNT(*) AS n_revisions,
@@ -35,39 +34,33 @@ FROM (
 ) a
 GROUP BY
   user_id,
-  user_text,
   day,
   ns;
 
 
--- registration dates for users who made at least one edit in any namespace
+-- user_id_to_names
 
-DROP TABLE IF EXISTS enwiki.user_registration;
-CREATE TABLE enwiki.user_registration
+
+DROP TABLE IF EXISTS enwiki.user_id_to_names;
+CREATE TABLE enwiki.user_id_to_names
 ROW FORMAT DELIMITED
   FIELDS TERMINATED BY '\t'
-  LINES TERMINATED BY '\n'
+  LINES TERMINATED BY '\n' 
 STORED AS TEXTFILE
 AS SELECT
- h.user_id,
- h.user_text,
- SUBSTRING(user_creation_timestamp, 1, 8) AS registration_day
+  event_user_id AS user_id,
+  event_user_text AS user_text
 FROM
-    wmf.mediawiki_history h
-JOIN
-  (SELECT 
-    DISTINCT user_id
-  FROM
-    enwiki.daily_revision_counts) e
-ON h.user_id = e.user_id
+  wmf.mediawiki_history
 WHERE
   wiki_db = "enwiki"
-  AND event_entity = "user"
-  AND event_type = "create"
-  AND user_is_created_by_self
-  AND NOT user_is_bot_by_name
-  AND NOT user_is_anonymous
-  AND user_creation_timestamp IS NOT NULL;
+  AND event_entity = "revision"
+  AND event_user_id != 0
+GROUP BY
+  event_user_id,
+  event_user_text;
+
+
 
 
 -- first edit dates for users who made at least one edit in any namespace
@@ -80,7 +73,6 @@ ROW FORMAT DELIMITED
 STORED AS TEXTFILE
 AS SELECT
     user_id,
-    user_text,
     day as first_edit_day
 FROM
   (SELECT
@@ -93,29 +85,6 @@ WHERE
   rank == 1
 GROUP BY
   user_id,
-  user_text,
   day
 ;
 
-
--- get combined table of registration and first edit days
-
-DROP TABLE IF EXISTS enwiki.user_start;
-CREATE TABLE enwiki.user_start
-ROW FORMAT DELIMITED
-  FIELDS TERMINATED BY '\t'
-  LINES TERMINATED BY '\n'
-STORED AS TEXTFILE
-AS SELECT
-  r.user_id,
-  r.user_text,
-  r.registration_day,
-  f.first_edit_day
-FROM
-  enwiki.user_first_edit f
-JOIN
-  enwiki.user_registration r
-ON (f.user_id = r.user_id)
-WHERE
-  r.registration_day <= f.first_edit_day 
-;
