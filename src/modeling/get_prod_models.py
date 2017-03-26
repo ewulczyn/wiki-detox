@@ -15,17 +15,17 @@ import numpy as np
 
 """
 USAGE EXAMPLE:
-python get_prod_models.py --task attack --model_dir ../../app/models 
-python wiki-detox/src/modeling/get_prod_models.py --task recipient_attack --model_dir ../../app/models 
-python get_prod_models.py --task aggression --model_dir ../../app/models 
-python get_prod_models.py --task toxicity --model_dir ../../app/models 
+python get_prod_models.py --task attack --model_dir ../../app/models
+python wiki-detox/src/modeling/get_prod_models.py --task recipient_attack --model_dir ../../app/models
+python get_prod_models.py --task aggression --model_dir ../../app/models
+python get_prod_models.py --task toxicity --model_dir ../../app/models
 
 """
 
 # Figshare URLs for downloading training data
-ATTACK_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7554634' 
+ATTACK_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7554634'
 ATTACK_ANNOTATIONS_URL = 'https://ndownloader.figshare.com/files/7554637'
-AGGRESSION_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7038038' 
+AGGRESSION_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7038038'
 AGGRESSION_ANNOTATIONS_URL = 'https://ndownloader.figshare.com/files/7383748'
 TOXICITY_ANNOTATED_COMMENTS_URL = 'https://ndownloader.figshare.com/files/7394542'
 TOXICITY_ANNOTATIONS_URL = 'https://ndownloader.figshare.com/files/7394539'
@@ -54,7 +54,7 @@ def download_training_data(data_dir, task):
                       os.path.join(data_dir, COMMENTS_FILE))
         download_file(ATTACK_ANNOTATIONS_URL, os.path.join(data_dir,
                       LABELS_FILE))
-    if task == "recipient_attack":
+    elif task == "recipient_attack":
         download_file(ATTACK_ANNOTATED_COMMENTS_URL,
                       os.path.join(data_dir, COMMENTS_FILE))
         download_file(ATTACK_ANNOTATIONS_URL, os.path.join(data_dir,
@@ -129,8 +129,8 @@ def train_model(X, y, model_type, ngram_type, label_type):
         ])
 
         params = {
-            'vect__max_features': 10000, 
-            'vect__ngram_range': (1,5),  
+            'vect__max_features': 10000,
+            'vect__ngram_range': (1,5),
             'vect__analyzer' : ngram_type,
             'tfidf__sublinear_tf' : True,
             'tfidf__norm' :'l2',
@@ -161,6 +161,7 @@ def train_model(X, y, model_type, ngram_type, label_type):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--skip_download',   default = 'false',   help ='do not download data if "true"')
     parser.add_argument('--data_dir',   default = '/tmp',   help ='directory for saving training data')
     parser.add_argument('--model_dir',  default = '/tmp',   help ='directory for saving model' )
     parser.add_argument('--task',       default = 'attack', help = 'either attack, recipient_attack, aggression or toxicity')
@@ -169,8 +170,9 @@ if __name__ == '__main__':
     parser.add_argument('--label_type', default = 'oh' ,    help = 'either oh or ed')
     args = vars(parser.parse_args())
 
-    print("Downloading Data")
-    download_training_data(args['data_dir'], args['task'])
+    if args['skip_download'] != 'true':
+        print("Downloading Data")
+        download_training_data(args['data_dir'], args['task'])
 
     print("Parsing Data")
     X, y = parse_training_data(args['data_dir'], args['task'])
@@ -189,6 +191,6 @@ if __name__ == '__main__':
 
 
 
-    
 
-    
+
+
