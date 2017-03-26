@@ -40,7 +40,10 @@ b'Hello, TensorFlow!'
 
 ```bash
 mkdir -p tmp/datasets && mkdir -p tmp/datasets
-python src/modeling/get_prod_models.py --task attack --data_dir tmp/datasets --model_dir ${PWD}/tmp/models
-python src/modeling/get_prod_models.py --task aggression --data_dir ${PWD}/tmp/datasets --model_dir ${PWD}/tmp/models
-python src/modeling/get_prod_models.py --task aggression --data_dir ${PWD}/tmp/datasets --model_dir ${PWD}/tmp/models
+python src/modeling/get_prod_models.py --task attack \
+  --data_dir tmp/datasets --model_dir ${PWD}/tmp/models
+python src/modeling/get_prod_models.py --task aggression \
+  --data_dir tmp/datasets --model_dir tmp/models
+python src/modeling/get_prod_models.py --task aggression \
+  --data_dir tmp/datasets --model_dir tmp/models
 ```
