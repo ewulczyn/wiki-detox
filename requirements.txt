@@ -6,3 +6,5 @@ matplotlib
 keras
 tensorflow
 joblib
+jupyter
+ipython-autotime

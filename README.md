@@ -38,12 +38,32 @@ b'Hello, TensorFlow!'
 
 # Setup datasets and train models from Figshare data
 
+Assuming you've
+
 ```bash
+# Enter the python virtual env
+source tmp/env/bin/activate
+# Create the local datasets and models directories.
 mkdir -p tmp/datasets && mkdir -p tmp/models
+# Download datasets and train models
+python src/modeling/get_prod_models.py --task recipient_attack \
+  --data_dir tmp/datasets --model_dir ${PWD}/tmp/models
 python src/modeling/get_prod_models.py --task attack \
   --data_dir tmp/datasets --model_dir ${PWD}/tmp/models
 python src/modeling/get_prod_models.py --task aggression \
   --data_dir tmp/datasets --model_dir tmp/models
 python src/modeling/get_prod_models.py --task aggression \
   --data_dir tmp/datasets --model_dir tmp/models
+ln -s ./tmp/models ./models
+```
+
+# Start a jupyter notebook
+
+
+
+```bash
+# Enter the python virtual env
+source tmp/env/bin/activate
+# Start jupyter
+jupyter notebook
 ```
