@@ -8,3 +8,5 @@ tensorflow
 joblib
 jupyter
 ipython-autotime
+ipython-beautifulSoup[bs4,notebook]
+mwparserfromhell
