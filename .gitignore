@@ -63,10 +63,9 @@ target/
 *.tsv
 *.xml
 data/
-*.txt
 .ipynb_checkpoints/
 models/
-
+tmp/
 
 # Latex
 *.aux
