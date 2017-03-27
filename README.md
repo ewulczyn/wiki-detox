@@ -59,8 +59,6 @@ ln -s ./tmp/models ./models
 
 # Start a jupyter notebook
 
-
-
 ```bash
 # Enter the python virtual env
 source tmp/env/bin/activate
