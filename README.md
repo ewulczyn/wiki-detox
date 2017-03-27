@@ -38,7 +38,7 @@ b'Hello, TensorFlow!'
 
 # Setup datasets and train models from Figshare data
 
-Assuming you've
+Assumes you have setup your python virtual environment.
 
 ```bash
 # Enter the python virtual env
