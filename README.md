@@ -1,6 +1,7 @@
 # Wikipedia Detox
 
-See https://meta.wikimedia.org/wiki/Research:Detox
+The repository is part of [the Wikipedia Detox Research project](https://meta.wikimedia.org/wiki/Research:Detox). 
+See [the getting started guide](https://github.com/ewulczyn/wiki-detox/blob/master/src/figshare/Wikipedia%20Talk%20Data%20-%20Getting%20Started.ipynb) to build your own models and run your own experiments.
 
 # Setup using python virtual env
 
