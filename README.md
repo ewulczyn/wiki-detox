@@ -3,6 +3,10 @@
 The repository is part of [the Wikipedia Detox Research project](https://meta.wikimedia.org/wiki/Research:Detox). 
 See [the getting started guide](https://github.com/ewulczyn/wiki-detox/blob/master/src/figshare/Wikipedia%20Talk%20Data%20-%20Getting%20Started.ipynb) to build your own models and run your own experiments.
 
+This repository hold the codebase associated with the paper [Ex Machina: Personal Attacks Seen at Scale](https://arxiv.org/abs/1610.08914) by Ellery Wulczyn, Nithum Thain, Lucas Dixon, published in Feb 2017 and presented at [WWW-2017](http://www2017.com.au/). 
+
+More recent development is now happening in the repositories of https://conversationai.github.io/ 
+
 # Setup using python virtual env
 
 Assumes you have [python/pip](https://docs.python.org/3/installing/)
