@@ -7,8 +7,8 @@ https://wikitech.wikimedia.org/wiki/Help:Tool_Labs/Web/Kubernetes#python_.28uwsg
 
 
 
-scp -i ~/.ssh/private_key -r /Users/ellerywulczyn/detox/app/models/attack_linear_char_oh_pipeline.pkl ewulczyn@dev.tools.wmflabs.org:/home/ewulczyn/models/
-scp -i ~/.ssh/private_key -r /Users/ellerywulczyn/detox/app/models/aggression_linear_char_oh_pipeline.pkl ewulczyn@dev.tools.wmflabs.org:/home/ewulczyn/models/
+scp -i ~/.ssh/private_key -r /Users/ellerywulczyn/detox/app/models/attack_linear_char_oh_pipeline.pkl ewulczyn@dev.toolforge.org:/home/ewulczyn/models/
+scp -i ~/.ssh/private_key -r /Users/ellerywulczyn/detox/app/models/aggression_linear_char_oh_pipeline.pkl ewulczyn@dev.toolforge.org:/home/ewulczyn/models/
 
 
 tool
