@@ -1,8 +1,8 @@
 GCE:
 scp -r  -i ~/.ssh/google_rsa ~/talk_page_abuse/models  ellerywulczyn@104.196.137.229:talk_page_abuse/
 
-Labs:
-https://wikitech.wikimedia.org/wiki/Help:Tool_Labs/Web/Kubernetes#python_.28uwsgi_.2B_python3.4.29
+Toolforge:
+https://wikitech.wikimedia.org/wiki/Help:Toolforge/Web/Kubernetes#python_.28uwsgi_.2B_python3.4.29
 
 
 
